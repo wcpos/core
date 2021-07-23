@@ -16,7 +16,7 @@
 		"@react-navigation/drawer": "next",
 		"@react-navigation/native": "next",
 		"@react-navigation/stack": "next",
-		"@sentry/browser": "6.9.0",
+		"@sentry/browser": "6.10.0",
 		"@sentry/electron": "2.5.1",
 		"@sentry/react-native": "2.6.0",
 		"@testing-library/jest-dom": "5.14.1",
