@@ -30,7 +30,7 @@
 		"@types/react-native": "0.64.12",
 		"@types/styled-components": "5.1.12",
 		"@types/styled-components-react-native": "5.1.1",
-		"@types/url-parse": "1.4.3",
+		"@types/url-parse": "1.4.4",
 		"axios": "0.21.1",
 		"date-fns": "^2.23.0",
 		"expo-haptics": "10.1.0",
