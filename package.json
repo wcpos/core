@@ -33,7 +33,7 @@
 		"@types/url-parse": "1.4.4",
 		"axios": "0.24.0",
 		"date-fns": "^2.25.0",
-		"expo-haptics": "10.1.0",
+		"expo-haptics": "11.0.3",
 		"html-entities": "^2.3.2",
 		"i18next": "21.4.1",
 		"jsonschema-to-interface": "1.0.5",
