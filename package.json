@@ -63,7 +63,7 @@
 		"react-native-svg": "12.1.1",
 		"react-native-tab-view": "^3.1.1",
 		"react-native-web-linear-gradient": "1.1.2",
-		"react-native-webview": "11.14.4",
+		"react-native-webview": "11.15.0",
 		"react-test-renderer": "17.0.2",
 		"react-virtual": "2.9.0",
 		"rxdb": "10.5.3",
