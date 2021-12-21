@@ -53,7 +53,7 @@
 		"react-cache": "2.0.0-alpha.1",
 		"react-error-boundary": "3.1.4",
 		"react-i18next": "11.15.1",
-		"react-native": "0.64.3",
+		"react-native": "0.66.4",
 		"react-native-device-info": "8.4.8",
 		"react-native-gesture-handler": "2.1.0",
 		"react-native-linear-gradient": "2.5.6",
