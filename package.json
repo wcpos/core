@@ -19,7 +19,7 @@
 		"@react-navigation/stack": "6.0.11",
 		"@sentry/browser": "6.16.1",
 		"@sentry/electron": "2.5.4",
-		"@sentry/react-native": "3.2.11",
+		"@sentry/react-native": "3.2.13",
 		"@testing-library/jest-dom": "5.16.1",
 		"@testing-library/react": "12.1.2",
 		"@testing-library/react-hooks": "7.0.2",
