@@ -66,7 +66,7 @@
 		"@types/core-js": "^2.5.5",
 		"@types/jest": "27.5.2",
 		"@types/lodash": "4.14.182",
-		"@types/react": "17.0.47",
+		"@types/react": "18.0.14",
 		"@types/react-native": "0.67.11",
 		"@types/styled-components": "5.1.25",
 		"@types/styled-components-react-native": "5.1.3",
