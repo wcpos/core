@@ -51,7 +51,7 @@
 		"react-native-svg": "13.1.0",
 		"react-native-web": "~0.18.9",
 		"react-native-web-linear-gradient": "1.1.2",
-		"react-native-webview": "11.23.0",
+		"react-native-webview": "11.23.1",
 		"react-test-renderer": "18.2.0",
 		"react-to-print": "^2.14.7",
 		"rxjs": "7.5.6",
