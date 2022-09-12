@@ -42,7 +42,7 @@
 		"react-error-boundary": "3.1.4",
 		"react-i18next": "11.18.5",
 		"react-native": "0.69.5",
-		"react-native-device-info": "10.0.2",
+		"react-native-device-info": "10.1.1",
 		"react-native-gesture-handler": "~2.6.0",
 		"react-native-linear-gradient": "2.6.2",
 		"react-native-reanimated": "2.6.0",
