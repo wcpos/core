@@ -58,7 +58,7 @@
 		"react-native-webview": "11.25.0",
 		"react-test-renderer": "18.2.0",
 		"react-to-print": "^2.14.10",
-		"rxjs": "7.5.7",
+		"rxjs": "7.6.0",
 		"styled-components": "5.3.6"
 	},
 	"devDependencies": {
