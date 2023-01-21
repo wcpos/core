@@ -70,7 +70,7 @@
 		"@types/jest": "^29.2.6",
 		"@types/lodash": "4.14.191",
 		"@types/react": "^18.0.27",
-		"@types/react-native": "~0.70.9",
+		"@types/react-native": "~0.71.0",
 		"@types/styled-components": "^5.1.26",
 		"@types/styled-components-react-native": "^5.2.1",
 		"@wcpos/eslint-config": "*",
