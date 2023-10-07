@@ -8,7 +8,6 @@ import Suspense from '@wcpos/components/src/suspense';
 
 import SimpleProductTableRow from './rows/simple';
 import VariableProductTableRow from './rows/variable';
-import { useQuery } from '../hooks/use-query';
 import { useT } from '../../../contexts/translations';
 import DataTable from '../components/data-table';
 import FilterBar from '../components/product/filter-bar';
@@ -17,6 +16,7 @@ import TaxBasedOn from '../components/product/tax-based-on';
 import UISettings from '../components/ui-settings';
 import { useTaxHelpers } from '../contexts/tax-helpers';
 import useUI from '../contexts/ui-settings';
+import { useQuery } from '../hooks/use-query';
 
 type ProductDocument = import('@wcpos/database').ProductDocument;
 
@@ -50,21 +50,24 @@ const Products = () => {
 	/**
 	 *
 	 */
-	const renderItem = React.useCallback((props) => {
-		let Component = TABLE_ROW_COMPONENTS[props.item.type];
+	const renderItem = React.useCallback(
+		(props) => {
+			let Component = TABLE_ROW_COMPONENTS[props.item.type];
 
-		// If we still didn't find a component, use SimpleProductTableRow as a fallback
-		// eg: Grouped products
-		if (!Component) {
-			Component = SimpleProductTableRow;
-		}
+			// If we still didn't find a component, use SimpleProductTableRow as a fallback
+			// eg: Grouped products
+			if (!Component) {
+				Component = SimpleProductTableRow;
+			}
 
-		return (
-			<ErrorBoundary>
-				<Component {...props} />
-			</ErrorBoundary>
-		);
-	}, []);
+			return (
+				<ErrorBoundary>
+					<Component query={productQuery} {...props} />
+				</ErrorBoundary>
+			);
+		},
+		[productQuery]
+	);
 
 	/**
 	 *

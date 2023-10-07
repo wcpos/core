@@ -2,7 +2,7 @@ import * as React from 'react';
 
 import get from 'lodash/get';
 import isPlainObject from 'lodash/isPlainObject';
-import { useObservableState } from 'observable-hooks';
+import { useObservableState, useObservableSuspense } from 'observable-hooks';
 import Animated, { useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 
 import ErrorBoundary from '@wcpos/components/src/error-boundary';
@@ -61,9 +61,11 @@ const variationCells = {
 /**
  *
  */
-const VariableProductTableRow = ({ item, index }: ListRenderItemInfo<ProductDocument>) => {
+const VariableProductTableRow = ({ item, index, query }: ListRenderItemInfo<ProductDocument>) => {
 	const mutation = useMutation({ collectionName: 'products' });
-	const [expanded, setExpanded] = React.useState(false);
+	const { nestedUUIDs } = useObservableSuspense(query.nestedResource);
+	const initialExpanded = nestedUUIDs.has(item.uuid);
+	const [expanded, setExpanded] = React.useState(initialExpanded);
 
 	/**
 	 *

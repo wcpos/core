@@ -2,6 +2,7 @@ import { orderBy } from '@shelf/fast-natural-order-by';
 import debounce from 'lodash/debounce';
 import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
+import { ObservableResource } from 'observable-hooks';
 import { RxCollection, RxDocument } from 'rxdb';
 import { BehaviorSubject, Observable, Subscription } from 'rxjs';
 import { switchMap, map, distinctUntilChanged, skip } from 'rxjs/operators';
@@ -34,6 +35,9 @@ export type Hooks = {
 
 type WhereClause = { field: string; value: any };
 
+const nestedUUIDs = new Map();
+nestedUUIDs.set('3d0458e4-bb98-4df0-bfdc-620ae2df3781', ['53c49bf6-3317-438b-8522-b7de1246682a']);
+
 /**
  * The Query class holds the state of the query and exposes an observable that emits the query results
  * It also exposes some helper methods to update the query state
@@ -44,16 +48,34 @@ class Query<T> {
 
 	public readonly paginator: PaginatorService<T>;
 	public readonly searchService: SearchService;
+	public readonly nestedResource: ObservableResource<{
+		data: RxDocument<T>[];
+		paginated: RxDocument<T>[];
+		count: number;
+		nestedUUIDs: Map<string, string[]>;
+	}>;
 	public readonly subs: Subscription[] = [];
 
 	public readonly subjects = {
 		queryState: new BehaviorSubject<QueryState | undefined>(undefined),
 		result: new BehaviorSubject<RxDocument<T>[]>([]),
+		nested: new BehaviorSubject<{
+			data: RxDocument<T>[];
+			paginated: RxDocument<T>[];
+			count: number;
+			nestedUUIDs: Map<string, string[]>;
+		}>(undefined),
 	};
 
 	readonly queryState$: Observable<QueryState | undefined> =
 		this.subjects.queryState.asObservable();
 	readonly result$: Observable<RxDocument<T>[]> = this.subjects.result.asObservable();
+	readonly nested$: Observable<{
+		data: RxDocument<T>[];
+		paginated: RxDocument<T>[];
+		count: number;
+		nestedUUIDs: Map<string, string[]>;
+	}> = this.subjects.nested.asObservable();
 
 	private isCanceled = false;
 
@@ -73,6 +95,7 @@ class Query<T> {
 		}
 		this.paginator = new PaginatorService<T>(this.$, 10);
 		this.searchService = new SearchService(collection, locale);
+		this.nestedResource = new ObservableResource(this.nested$);
 
 		/**
 		 * Keep track of what we are subscribed to
@@ -91,6 +114,18 @@ class Query<T> {
 			 */
 			this.query$.subscribe((result) => {
 				this.subjects.result.next(result);
+			}),
+
+			/**
+			 * Subscribe to query changes and emit the results
+			 */
+			this.query$.subscribe((result) => {
+				this.subjects.nested.next({
+					data: result,
+					paginated: result.slice(0, 10),
+					count: result.length,
+					nestedUUIDs,
+				});
 			})
 		);
 
