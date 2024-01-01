@@ -34,7 +34,7 @@
     "@wcpos/themes": "*",
     "@wcpos/utils": "*",
     "@widgetbot/react-embed": "^1.9.0",
-    "axios": "1.6.2",
+    "axios": "1.6.3",
     "bottleneck": "^2.19.5",
     "expo-barcode-scanner": "~12.7.0",
     "expo-haptics": "~12.6.0",
