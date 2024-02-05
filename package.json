@@ -73,7 +73,7 @@
     "use-deep-compare-effect": "^1.8.1"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "6.4.0",
+    "@testing-library/jest-dom": "6.4.1",
     "@testing-library/react": "^14.2.0",
     "@testing-library/react-hooks": "8.0.1",
     "@types/core-js": "^2.5.8",
