@@ -62,7 +62,7 @@
     "react-native-url-polyfill": "^2.0.0",
     "react-native-web": "~0.19.10",
     "react-native-web-linear-gradient": "1.1.2",
-    "react-native-webview": "13.6.4",
+    "react-native-webview": "13.8.1",
     "react-test-renderer": "18.2.0",
     "react-thermal-printer": "^0.18.1",
     "react-to-print": "^2.15.1",
