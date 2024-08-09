@@ -1,118 +1,141 @@
 import * as React from 'react';
 
-import get from 'lodash/get';
-import pick from 'lodash/pick';
+import { useObservableEagerState } from 'observable-hooks';
 
-import Icon from '@wcpos/components/src/icon';
-import Modal from '@wcpos/components/src/modal';
+import { InputWithLabel } from '@wcpos/components/src/form-layout';
 
 import { useT } from '../../../../../contexts/translations';
-import { EditForm } from '../../../components/edit-json-form';
-import { useCollection } from '../../../hooks/use-collection';
+import { EditFormWithJSONTree } from '../../../components/edit-form-with-json-tree';
+import NumberInput from '../../../components/number-input';
+import { TaxClassSelect } from '../../../components/tax-class-select';
+import { useCurrentOrder } from '../../contexts/current-order';
+import { useLineItemData } from '../../hooks/use-line-item-data';
+import { useUpdateLineItem } from '../../hooks/use-update-line-item';
 
-interface EditLineItemProps {
-	item: import('@wcpos/database').LineItemDocument;
+interface Props {
+	uuid: string;
+	item: import('@wcpos/database').OrderDocument['line_items'][number];
 }
 
 /**
  *
  */
-const EditButton = ({ item }: EditLineItemProps) => {
-	const [opened, setOpened] = React.useState(false);
+export const EditLineItem = ({ uuid, item }: Props) => {
 	const t = useT();
-	const { collection } = useCollection('orders');
+	const { updateLineItem } = useUpdateLineItem();
+	const { getLineItemData } = useLineItemData();
+	const { price, regular_price, tax_status } = getLineItemData(item);
+	const { currentOrder } = useCurrentOrder();
+	const currencySymbol = useObservableEagerState(currentOrder.currency_symbol$);
 
 	/**
-	 * Get schema for line item
+	 * We need to add the tax_status as a field for the Edit form
 	 */
-	const schema = React.useMemo(() => {
-		const lineItemSchema = get(
-			collection,
-			'schema.jsonSchema.properties.line_items.items.properties'
-		);
-		const fields = [
-			'name',
-			'sku',
-			'price',
-			'quantity',
-			'tax_class',
-			'subtotal',
-			// 'subtotal_tax',
-			// 'total',
-			// 'total_tax',
-			'taxes',
-			'meta_data',
-		];
+	const json = React.useMemo(() => {
 		return {
-			properties: pick(lineItemSchema, fields),
-			title: null,
-			description: null,
+			...item,
+			price,
+			regular_price,
+			tax_status,
 		};
-	}, [collection]);
+	}, [item, price, regular_price, tax_status]);
+
+	/**
+	 * Get schema for fee lines
+	 */
+	const schema = React.useMemo(
+		() => ({
+			type: 'object',
+			properties: {
+				// name: { type: 'string', title: t('Fee Name', { _tags: 'core' }) },
+				sku: { type: 'string', title: t('SKU', { _tags: 'core' }) },
+				price: { type: 'string', title: t('Price', { _tags: 'core' }) },
+				regular_price: { type: 'string', title: t('Regular Price', { _tags: 'core' }) },
+				tax_status: {
+					type: 'string',
+					title: t('Tax Status', { _tags: 'core' }),
+					enum: ['taxable', 'none'],
+					default: 'taxable',
+				},
+				tax_class: {
+					type: 'string',
+					title: t('Tax Class', { _tags: 'core' }),
+				},
+				meta_data: {
+					type: 'array',
+					title: t('Meta Data', { _tags: 'core' }),
+					items: {
+						type: 'object',
+						properties: {
+							id: {
+								description: t('Meta ID', { _tags: 'core' }),
+								type: 'integer',
+							},
+							key: {
+								description: t('Meta key', { _tags: 'core' }),
+								type: 'string',
+							},
+							value: {
+								description: t('Meta value', { _tags: 'core' }),
+								type: 'string',
+							},
+							display_key: {
+								description: t('Display key', { _tags: 'core' }),
+								type: 'string',
+							},
+							display_value: {
+								description: t('Display value', { _tags: 'core' }),
+								type: 'string',
+							},
+						},
+					},
+				},
+			},
+		}),
+		[t]
+	);
 
 	/**
 	 *
 	 */
-	const handleChange = React.useCallback((newData) => {
-		console.log(newData);
-	}, []);
+	const uiSchema = React.useMemo(
+		() => ({
+			'ui:rootFieldId': 'line_item',
+			'ui:title': null,
+			'ui:description': null,
+			price: {
+				'ui:widget': (props) => (
+					<InputWithLabel label={props.label} style={{ width: 200 }}>
+						<NumberInput {...props} showDecimals prefix={currencySymbol} placement="right" />
+					</InputWithLabel>
+				),
+			},
+			regular_price: {
+				'ui:widget': (props) => (
+					<InputWithLabel label={props.label} style={{ width: 200 }}>
+						<NumberInput {...props} showDecimals prefix={currencySymbol} placement="right" />
+					</InputWithLabel>
+				),
+			},
+			tax_class: {
+				'ui:widget': (props) => <TaxClassSelect {...props} />,
+			},
+			meta_data: {
+				'ui:collapsible': 'closed',
+			},
+		}),
+		[currencySymbol]
+	);
 
 	/**
 	 *
 	 */
 	return (
-		<>
-			<Icon
-				name="ellipsisVertical"
-				onPress={() => setOpened(true)}
-				// tooltip={t('Edit', { _tags: 'core' })}
-			/>
-			<Modal
-				title={t('Edit {name}', { _tags: 'core', name: item.name })}
-				size="large"
-				opened={opened}
-				onClose={() => setOpened(false)}
-			>
-				<EditForm
-					json={item}
-					onChange={handleChange}
-					schema={schema}
-					uiSchema={{
-						'ui:title': null,
-						'ui:description': null,
-						name: {
-							'ui:label': t('Name', { _tags: 'core' }),
-						},
-						sku: {
-							'ui:label': t('SKU', { _tags: 'core' }),
-						},
-						price: {
-							'ui:label': t('Price', { _tags: 'core' }),
-						},
-						quantity: {
-							'ui:label': t('Quantity', { _tags: 'core' }),
-						},
-						tax_class: {
-							'ui:label': t('Tax Class', { _tags: 'core' }),
-						},
-						subtootal: {
-							'ui:label': t('Subtotal', { _tags: 'core' }),
-						},
-						taxes: {
-							'ui:collapsible': 'closed',
-							'ui:title': t('Taxes', { _tags: 'core' }),
-							'ui:description': null,
-						},
-						meta_data: {
-							'ui:collapsible': 'closed',
-							'ui:title': t('Meta Data', { _tags: 'core' }),
-							'ui:description': null,
-						},
-					}}
-				/>
-			</Modal>
-		</>
+		<EditFormWithJSONTree
+			json={json}
+			onChange={({ changes }) => updateLineItem(uuid, changes)}
+			schema={schema}
+			uiSchema={uiSchema}
+		/>
 	);
 };
-
-export default EditButton;

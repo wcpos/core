@@ -2,34 +2,80 @@ import * as React from 'react';
 
 import map from 'lodash/map';
 
-import { ComboboxWithLabel } from '@wcpos/components/src/combobox';
+import { Button, ButtonText } from '@wcpos/tailwind/src/button';
+import {
+	Command,
+	CommandInput,
+	CommandEmpty,
+	CommandList,
+	CommandItem,
+} from '@wcpos/tailwind/src/command';
+import { Label } from '@wcpos/tailwind/src/label';
+import { Popover, PopoverTrigger, PopoverContent } from '@wcpos/tailwind/src/popover';
+import { VStack } from '@wcpos/tailwind/src/vstack';
 
-import useLanguages, { LanguagesProvider } from '../../../contexts/languages';
-
-/**
- *
- */
-const LanguageSelect = ({ label, value = 'en_US', onChange }) => {
-	const allLanguages = useLanguages();
-	const options = map(allLanguages, (language) => ({
-		label: `${language.name}${
-			language.name !== language.nativeName ? ` (${language.nativeName})` : ''
-		}`,
-		value: language.locale,
-	}));
-
-	return <ComboboxWithLabel label={label} options={options} value={value} onChange={onChange} />;
-};
+import { useT } from '../../../contexts/translations';
+import { useLocale } from '../../../hooks/use-locale';
 
 /**
  *
  */
-const LanguageSelectWithProvider = (props) => {
+export const LanguageSelect = ({ label, value = 'en_US', onChange }) => {
+	const { locales } = useLocale();
+	const t = useT();
+
+	/**
+	 *
+	 */
+	const options = React.useMemo(
+		() =>
+			map(locales, (language) => {
+				let label = language.name;
+				if (language?.nativeName && language.name !== language.nativeName) {
+					label += ` (${language.nativeName})`;
+				}
+				return {
+					label,
+					value: language.locale,
+				};
+			}),
+		[locales]
+	);
+
+	/**
+	 *
+	 */
+	const displayLabel = React.useMemo(() => {
+		const selected = options.find((option) => option.value === value);
+		return selected ? selected.label : '';
+	}, [options, value]);
+
+	/**
+	 *
+	 */
 	return (
-		<LanguagesProvider>
-			<LanguageSelect {...props} />
-		</LanguagesProvider>
+		<VStack>
+			<Label nativeID="language">{label}</Label>
+			<Popover>
+				<PopoverTrigger asChild>
+					<Button variant="outline">
+						<ButtonText>{displayLabel}</ButtonText>
+					</Button>
+				</PopoverTrigger>
+				<PopoverContent className="p-0">
+					<Command>
+						<CommandInput placeholder={t('Search Languages', { _tags: 'core' })} />
+						<CommandEmpty>{t('No language found', { _tags: 'core' })}</CommandEmpty>
+						<CommandList>
+							{options.map((option) => (
+								<CommandItem key={option.value} onSelect={() => onChange(option.value)}>
+									{option.label}
+								</CommandItem>
+							))}
+						</CommandList>
+					</Command>
+				</PopoverContent>
+			</Popover>
+		</VStack>
 	);
 };
-
-export default LanguageSelectWithProvider;

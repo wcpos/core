@@ -1,11 +1,11 @@
 import * as React from 'react';
 
-import Box from '@wcpos/components/src/box';
-import ErrorBoundary from '@wcpos/components/src/error-boundary';
 import Icon from '@wcpos/components/src/icon';
-import Suspense from '@wcpos/components/src/suspense';
+import { Suspense } from '@wcpos/tailwind/src/suspense';
 import Tabs from '@wcpos/components/src/tabs';
-import { useQuery } from '@wcpos/query';
+import { Box } from '@wcpos/tailwind/src/box';
+import { ErrorBoundary } from '@wcpos/tailwind/src/error-boundary';
+import { VStack } from '@wcpos/tailwind/src/vstack';
 
 import Cart from './cart';
 import EmptyCart from './empty-cart';
@@ -15,33 +15,22 @@ import { useCurrentOrder } from '../contexts/current-order';
 const OpenOrders = ({ isColumn = false }) => {
 	const { currentOrder } = useCurrentOrder();
 
-	/**
-	 *
-	 */
-	const query = useQuery({
-		queryKeys: ['orders', { status: 'pos-open' }],
-		collectionName: 'orders',
-		initialParams: {
-			sortBy: 'date_created_gmt',
-			sortDirection: 'desc',
-			selector: { status: 'pos-open' },
-		},
-	});
+	if (!currentOrder) {
+		throw new Error('Current order is not defined');
+	}
 
 	/**
 	 *
 	 */
 	return (
-		<Box padding="small" paddingLeft={isColumn ? 'none' : 'small'} style={{ height: '100%' }}>
-			<Box style={{ flexGrow: 1, flexShrink: 1, flexBasis: '0%' }}>
-				<ErrorBoundary>
-					{currentOrder.isNew ? (
-						<EmptyCart currentOrder={currentOrder} />
-					) : (
-						<Cart currentOrder={currentOrder} />
-					)}
-				</ErrorBoundary>
-			</Box>
+		<VStack className={`gap-0 p-2 h-full ${isColumn && 'pl-0'}`}>
+			<ErrorBoundary>
+				{currentOrder.isNew ? (
+					<EmptyCart currentOrder={currentOrder} />
+				) : (
+					<Cart currentOrder={currentOrder} />
+				)}
+			</ErrorBoundary>
 			<ErrorBoundary>
 				<Suspense
 					fallback={
@@ -54,10 +43,10 @@ const OpenOrders = ({ isColumn = false }) => {
 						/>
 					}
 				>
-					<OpenOrderTabs query={query} />
+					<OpenOrderTabs />
 				</Suspense>
 			</ErrorBoundary>
-		</Box>
+		</VStack>
 	);
 };
 

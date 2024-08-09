@@ -1,51 +1,99 @@
 import * as React from 'react';
 
-import Box from '@wcpos/components/src/box';
 import { EdittableText } from '@wcpos/components/src/edittable-text';
+import { Box } from '@wcpos/tailwind/src/box';
+import { Button, ButtonText } from '@wcpos/tailwind/src/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@wcpos/tailwind/src/dialog';
+import { HStack } from '@wcpos/tailwind/src/hstack';
+import { Icon } from '@wcpos/tailwind/src/icon';
+import { Text } from '@wcpos/tailwind/src/text';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@wcpos/tailwind/src/tooltip';
+import { VStack } from '@wcpos/tailwind/src/vstack';
 
-import EditFeeLineButton from './edit-fee-line';
-import { useCurrentOrder } from '../../contexts/current-order';
+import { EditFeeLine } from './edit-fee-line';
+import { useT } from '../../../../../contexts/translations';
+import { useUpdateFeeLine } from '../../hooks/use-update-fee-line';
 
+type FeeLine = import('@wcpos/database').OrderDocument['fee_lines'][number];
 interface Props {
-	item: import('@wcpos/database').FeeLineDocument;
+	uuid: string;
+	item: FeeLine;
+	column: import('@wcpos/tailwind/src/table').ColumnProps<FeeLine>;
 }
 
-export const FeeName = ({ item }: Props) => {
-	const { currentOrder } = useCurrentOrder();
+/**
+ *
+ */
+export const FeeName = ({ uuid, item }: Props) => {
+	const { updateFeeLine } = useUpdateFeeLine();
+	const [openEditDialog, setOpenEditDialog] = React.useState(false);
+	const t = useT();
+
+	/**
+	 * filter out the private meta data
+	 */
+	const metaData = React.useMemo(
+		() =>
+			item.meta_data.filter((meta) => {
+				if (meta.key) {
+					return !meta.key.startsWith('_');
+				}
+				return true;
+			}),
+		[item.meta_data]
+	);
 
 	/**
 	 *
 	 */
-	const handleUpdate = React.useCallback(
-		async (newValue: string) => {
-			currentOrder.incrementalModify((order) => {
-				const updatedLineItems = order.fee_lines.map((li) => {
-					const uuidMetaData = li.meta_data.find((meta) => meta.key === '_woocommerce_pos_uuid');
-					if (uuidMetaData && uuidMetaData.value === item.uuid) {
-						return {
-							...li,
-							name: newValue,
-						};
-					}
-					return li;
-				});
-
-				return { ...order, fee_lines: updatedLineItems };
-			});
-		},
-		[currentOrder, item]
-	);
-
 	return (
-		<Box horizontal space="xSmall" style={{ width: '100%' }}>
-			<Box fill>
-				<EdittableText weight="bold" onChange={handleUpdate}>
-					{item.name}
-				</EdittableText>
-			</Box>
-			<Box distribution="center">
-				<EditFeeLineButton item={item} />
-			</Box>
-		</Box>
+		<>
+			<VStack className="w-full">
+				<HStack>
+					<Button
+						variant="outline"
+						//onChange={(name) => updateLineItem(uuid, { name })}
+					>
+						<ButtonText className="font-bold">{item.name}</ButtonText>
+					</Button>
+					<Tooltip delayDuration={150}>
+						<TooltipTrigger asChild>
+							<Button
+								variant="ghost"
+								className="rounded-full"
+								onPress={() => setOpenEditDialog(true)}
+							>
+								<Icon name="ellipsisVertical" />
+							</Button>
+						</TooltipTrigger>
+						<TooltipContent>
+							<Text>{t('Edit {name}', { _tags: 'core', name: item.name })}</Text>
+						</TooltipContent>
+					</Tooltip>
+				</HStack>
+
+				{metaData.length > 0 && (
+					<Box className="grid gap-1 grid-cols-2">
+						{metaData.map((meta) => {
+							return (
+								<React.Fragment key={meta.id || meta.display_key || meta.key}>
+									<Text className="text-sm">{`${meta.key}:`}</Text>
+									<Text className="text-sm">{meta.value}</Text>
+								</React.Fragment>
+							);
+						})}
+					</Box>
+				)}
+			</VStack>
+
+			<Dialog open={openEditDialog} onOpenChange={setOpenEditDialog}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>{t('Edit {name}', { _tags: 'core', name: item.name })}</DialogTitle>
+					</DialogHeader>
+					<EditFeeLine uuid={uuid} item={item} />
+				</DialogContent>
+			</Dialog>
+		</>
 	);
 };

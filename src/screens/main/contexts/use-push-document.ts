@@ -3,7 +3,7 @@ import * as React from 'react';
 import get from 'lodash/get';
 import isEmpty from 'lodash/isEmpty';
 
-import useSnackbar from '@wcpos/components/src/snackbar';
+import { Toast } from '@wcpos/tailwind/src/toast';
 import log from '@wcpos/utils/src/logger';
 
 import { useT } from '../../../contexts/translations';
@@ -16,7 +16,6 @@ type RxDocument = import('rxdb').RxDocument;
  */
 const usePushDocument = () => {
 	const http = useRestHttpClient();
-	const addSnackbar = useSnackbar();
 	const t = useT();
 
 	/**
@@ -42,12 +41,13 @@ const usePushDocument = () => {
 				 * FIXME: this is a hack to customise the data sent to the server for orders
 				 * It's not ideal, but it works for now
 				 */
-				const populatedData =
-					latestDoc.collection.name === 'orders'
-						? await latestDoc.toPopulatedOrderJSON()
-						: await latestDoc.toPopulatedJSON();
+				// const populatedData =
+				// 	latestDoc.collection.name === 'orders'
+				// 		? await latestDoc.toPopulatedOrderJSON()
+				// 		: await latestDoc.toPopulatedJSON();
 
-				const response = await http.post(endpoint, populatedData);
+				const json = latestDoc.toJSON();
+				const response = await http.post(endpoint, json);
 				const data = get(response, 'data');
 				/**
 				 * It's possible for the WC REST API server to retrun a 200 response but with data = ""
@@ -66,13 +66,13 @@ const usePushDocument = () => {
 				// return latestDoc.patch(parsedData);
 			} catch (err) {
 				log.error(err);
-				addSnackbar({
-					message: t('There was an error: {error}', { _tags: 'core', error: err.message }),
+				Toast.show({
+					text1: t('There was an error: {error}', { _tags: 'core', error: err.message }),
 					type: 'critical',
 				});
 			}
 		},
-		[addSnackbar, http, t]
+		[http, t]
 	);
 };
 

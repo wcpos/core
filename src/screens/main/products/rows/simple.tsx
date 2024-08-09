@@ -2,17 +2,17 @@ import * as React from 'react';
 
 import get from 'lodash/get';
 
-import ErrorBoundary from '@wcpos/components/src/error-boundary';
-import Suspense from '@wcpos/components/src/suspense';
-import Table, { CellRenderer } from '@wcpos/components/src/table';
-import Text from '@wcpos/components/src/text';
+import { ErrorBoundary } from '@wcpos/tailwind/src/error-boundary';
+import { Suspense } from '@wcpos/tailwind/src/suspense';
+import Table, { CellRenderer } from '@wcpos/tailwind/src/table';
+import { Text } from '@wcpos/tailwind/src/text';
 import log from '@wcpos/utils/src/logger';
 
 import { Date } from '../../components/date';
 import Categories from '../../components/product/categories';
 import { ProductImage } from '../../components/product/image';
 import Tags from '../../components/product/tags';
-import { useMutation } from '../../hooks/use-mutation';
+import { useMutation } from '../../hooks/mutations/use-mutation';
 import Actions from '../cells/actions';
 import Barcode from '../cells/barcode';
 import EdittablePrice from '../cells/edittable-price';

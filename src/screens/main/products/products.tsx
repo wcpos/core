@@ -1,23 +1,25 @@
 import * as React from 'react';
 
-import { useTheme } from 'styled-components/native';
-
-import Box from '@wcpos/components/src/box';
-import ErrorBoundary from '@wcpos/components/src/error-boundary';
-import Suspense from '@wcpos/components/src/suspense';
 import { useRelationalQuery } from '@wcpos/query';
+import { Box } from '@wcpos/tailwind/src/box';
+import { Card, CardContent, CardHeader } from '@wcpos/tailwind/src/card';
+import { DataTableRow } from '@wcpos/tailwind/src/data-table';
+import { ErrorBoundary } from '@wcpos/tailwind/src/error-boundary';
+import { HStack } from '@wcpos/tailwind/src/hstack';
+import { Suspense } from '@wcpos/tailwind/src/suspense';
+import { VStack } from '@wcpos/tailwind/src/vstack';
 
 import SimpleProductTableRow from './rows/simple';
 import VariableProductTableRow from './rows/variable';
 import { useBarcode } from './use-barcode';
 import { useT } from '../../../contexts/translations';
-import DataTable from '../components/data-table';
+import { DataTable } from '../components/data-table';
 import FilterBar from '../components/product/filter-bar';
-import Search from '../components/product/search';
-import TaxBasedOn from '../components/product/tax-based-on';
-import UISettings from '../components/ui-settings';
-import { useTaxHelpers } from '../contexts/tax-helpers';
-import useUI from '../contexts/ui-settings';
+import { TaxBasedOn } from '../components/product/tax-based-on';
+import { QuerySearchInput } from '../components/query-search-input';
+import { UISettings } from '../components/ui-settings';
+import { useTaxRates } from '../contexts/tax-rates';
+import { useUISettings } from '../contexts/ui-settings';
 
 type ProductDocument = import('@wcpos/database').ProductDocument;
 
@@ -31,9 +33,8 @@ const TABLE_ROW_COMPONENTS = {
  *
  */
 const Products = () => {
-	const { uiSettings } = useUI('products');
-	const theme = useTheme();
-	const { calcTaxes } = useTaxHelpers();
+	const { uiSettings } = useUISettings('products');
+	const { calcTaxes } = useTaxRates();
 	const t = useT();
 
 	/**
@@ -44,8 +45,8 @@ const Products = () => {
 			queryKeys: ['products', { target: 'page', type: 'relational' }],
 			collectionName: 'products',
 			initialParams: {
-				sortBy: uiSettings.get('sortBy'),
-				sortDirection: uiSettings.get('sortDirection'),
+				sortBy: uiSettings.sortBy,
+				sortDirection: uiSettings.sortDirection,
 			},
 		},
 		{
@@ -53,7 +54,7 @@ const Products = () => {
 			collectionName: 'variations',
 			initialParams: {
 				sortBy: 'id',
-				sortDirection: uiSettings.get('sortDirection'),
+				sortDirection: uiSettings.sortDirection,
 			},
 			endpoint: 'products/variations',
 			greedy: true,
@@ -68,86 +69,59 @@ const Products = () => {
 	/**
 	 *
 	 */
-	const renderItem = React.useCallback((props) => {
-		let Component = TABLE_ROW_COMPONENTS[props.item.document.type];
-
-		// If we still didn't find a component, use SimpleProductTableRow as a fallback
-		// eg: Grouped products
-		if (!Component) {
-			Component = SimpleProductTableRow;
-		}
-
-		return (
-			<ErrorBoundary>
-				<Component {...props} />
-			</ErrorBoundary>
-		);
-	}, []);
+	const renderItem = React.useCallback(
+		({ item: row, index, columns }: { item: any; index: number; columns: any }) => (
+			<DataTableRow row={row} index={index} columns={[columns]} />
+		),
+		[]
+	);
 
 	/**
 	 *
 	 */
 	return (
-		<Box padding="small" style={{ height: '100%' }}>
-			<Box
-				raised
-				rounding="medium"
-				style={{ backgroundColor: 'white', flexGrow: 1, flexShrink: 1, flexBasis: '0%' }}
-			>
-				<Box
-					horizontal
-					style={{
-						backgroundColor: theme.colors.grey,
-						borderTopLeftRadius: theme.rounding.medium,
-						borderTopRightRadius: theme.rounding.medium,
-					}}
-				>
-					<Box fill space="small">
-						<Box horizontal align="center" padding="small" paddingBottom="none" space="small">
+		<Box className="p-2 h-full">
+			<Card className="flex-1">
+				<CardHeader className="p-2 bg-input">
+					<VStack>
+						<HStack>
 							<ErrorBoundary>
-								<Search query={query} />
+								<QuerySearchInput
+									query={query}
+									placeholder={t('Search Products', { _tags: 'core' })}
+								/>
 							</ErrorBoundary>
-							<ErrorBoundary>
-								{/* <Icon
+							{/* <Icon
 						name="plus"
 						onPress={() => navigation.navigate('AddProduct')}
 						tooltip={t('Add new customer', { _tags: 'core' })}
 					/> */}
-								<UISettings
-									uiSettings={uiSettings}
-									title={t('Product Settings', { _tags: 'core' })}
-								/>
-							</ErrorBoundary>
-						</Box>
-						<Box horizontal padding="small" paddingTop="none">
-							<ErrorBoundary>
-								<FilterBar query={query} />
-							</ErrorBoundary>
-						</Box>
-					</Box>
-				</Box>
-				<Box style={{ flexGrow: 1, flexShrink: 1, flexBasis: '0%' }}>
+							<UISettings
+								uiSettings={uiSettings}
+								title={t('Product Settings', { _tags: 'core' })}
+							/>
+						</HStack>
+						<ErrorBoundary>
+							<FilterBar query={query} />
+						</ErrorBoundary>
+					</VStack>
+				</CardHeader>
+				<CardContent className="flex-1 p-0">
 					<ErrorBoundary>
 						<Suspense>
 							<DataTable<ProductDocument>
+								id="products"
 								query={query}
-								uiSettings={uiSettings}
 								renderItem={renderItem}
 								noDataMessage={t('No products found', { _tags: 'core' })}
 								estimatedItemSize={100}
 								extraContext={{ taxLocation: 'base' }}
-								footer={
-									calcTaxes && (
-										<Box fill padding="small" space="xSmall" horizontal>
-											<TaxBasedOn taxBasedOn="base" />
-										</Box>
-									)
-								}
+								footer={calcTaxes && <TaxBasedOn />}
 							/>
 						</Suspense>
 					</ErrorBoundary>
-				</Box>
-			</Box>
+				</CardContent>
+			</Card>
 		</Box>
 	);
 };

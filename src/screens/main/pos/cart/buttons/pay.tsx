@@ -1,15 +1,15 @@
 import * as React from 'react';
 
 import { useNavigation, StackActions } from '@react-navigation/native';
-import { useObservableState } from 'observable-hooks';
+import { useObservableEagerState } from 'observable-hooks';
 import { isRxDocument } from 'rxdb';
 
-import Button from '@wcpos/components/src/button';
-import { useSnackbar } from '@wcpos/components/src/snackbar/use-snackbar';
+import { Button, ButtonText } from '@wcpos/tailwind/src/button';
+import { Toast } from '@wcpos/tailwind/src/toast';
 
 import { useT } from '../../../../../contexts/translations';
 import usePushDocument from '../../../contexts/use-push-document';
-import useCurrencyFormat from '../../../hooks/use-currency-format';
+import { useCurrentOrderCurrencyFormat } from '../../../hooks/use-current-order-currency-format';
 import { useCurrentOrder } from '../../contexts/current-order';
 
 /**
@@ -17,11 +17,10 @@ import { useCurrentOrder } from '../../contexts/current-order';
  */
 const PayButton = () => {
 	const { currentOrder } = useCurrentOrder();
-	const total = useObservableState(currentOrder.total$, currentOrder.total);
-	const { format } = useCurrencyFormat();
+	const total = useObservableEagerState(currentOrder.total$);
+	const { format } = useCurrentOrderCurrencyFormat();
 	const navigation = useNavigation();
 	const [loading, setLoading] = React.useState(false);
-	const addSnackbar = useSnackbar();
 	const pushDocument = usePushDocument();
 	const t = useT();
 
@@ -37,32 +36,30 @@ const PayButton = () => {
 				}
 			});
 		} catch (error) {
-			addSnackbar({
-				message: t('{message}', { _tags: 'core', message: error.message || 'Error' }),
+			Toast.show({
+				text1: t('{message}', { _tags: 'core', message: error.message || 'Error' }),
+				type: 'error',
 			});
 		} finally {
 			setLoading(false);
 		}
-	}, [pushDocument, currentOrder, navigation, addSnackbar, t]);
+	}, [pushDocument, currentOrder, navigation, t]);
 
 	/**
 	 *
 	 */
 	return (
 		<Button
-			fill
-			size="large"
-			title={t('Checkout {order_total}', { order_total: format(total || 0), _tags: 'core' })}
+			size="lg"
 			onPress={handlePay}
-			type="success"
-			style={{
-				flex: 3,
-				borderTopLeftRadius: 0,
-				borderTopRightRadius: 0,
-				borderBottomLeftRadius: 0,
-			}}
+			variant="success"
+			className="basis-3/4 rounded-t-none rounded-bl-none"
 			loading={loading}
-		/>
+		>
+			<ButtonText>
+				{t('Checkout {order_total}', { order_total: format(total || 0), _tags: 'core' })}
+			</ButtonText>
+		</Button>
 	);
 };
 

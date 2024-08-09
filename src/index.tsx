@@ -5,9 +5,9 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 // import { enableFreeze } from 'react-native-screens';
 import { ThemeProvider } from 'styled-components/native';
 
-import ErrorBoundary from '@wcpos/components/src/error-boundary';
-import Portal from '@wcpos/components/src/portal';
-import { SnackbarProvider } from '@wcpos/components/src/snackbar';
+import { ErrorBoundary } from '@wcpos/tailwind/src/error-boundary';
+import { PortalHost } from '@wcpos/tailwind/src/portal';
+import { Toast } from '@wcpos/tailwind/src/toast';
 import getTheme from '@wcpos/themes';
 
 import { AppStateProvider } from './contexts/app-state';
@@ -23,6 +23,18 @@ import 'setimmediate'; // https://github.com/software-mansion/react-native-reani
 
 // enable freeze
 // enableFreeze(true);
+
+// import global styles for web
+// import '@wcpos/tailwind/dist/styles.css';
+
+/**
+ * Initial Props
+ * - only web at the moment, but may be useful for other platforms in the future
+ */
+let initialProps: Record<string, unknown> = {};
+if (window && window.initialProps) {
+	initialProps = Object.freeze(window.initialProps); // prevent accidental mutation
+}
 
 /**
  *
@@ -46,24 +58,40 @@ const App = () => {
 	return (
 		<ErrorBoundary FallbackComponent={RootError}>
 			<GestureHandlerRootView style={{ flex: 1 }}>
-				<AppStateProvider>
-					<React.Suspense fallback={<Splash />}>
-						<ThemeProvider theme={theme}>
-							<ErrorBoundary>
-								<TranslationProvider>
-									<SafeAreaProviderCompat style={{ overflow: 'hidden' }}>
-										<SnackbarProvider>
-											<Portal.Provider>
-												<RootNavigator />
-												<Portal.Manager />
-											</Portal.Provider>
-										</SnackbarProvider>
-									</SafeAreaProviderCompat>
-								</TranslationProvider>
-							</ErrorBoundary>
-						</ThemeProvider>
-					</React.Suspense>
-				</AppStateProvider>
+				<React.Suspense
+					/**
+					 * First suspense to load the initial app state
+					 * - we now have site, user, store, etc if the user is logged in
+					 */
+					fallback={<Splash />}
+				>
+					<AppStateProvider initialProps={initialProps}>
+						<React.Suspense
+							/**
+							 * Second suspense to allow anything else to load that depends on the app state
+							 * - translations, theme, etc
+							 * - in the future it might be nice to have a loading screen that shows progress for initial load
+							 */
+							fallback={<Splash />}
+						>
+							<ThemeProvider theme={theme}>
+								<ErrorBoundary>
+									<TranslationProvider>
+										<SafeAreaProviderCompat style={{ overflow: 'hidden' }}>
+											<RootNavigator />
+											<ErrorBoundary>
+												<Toast />
+											</ErrorBoundary>
+											<ErrorBoundary>
+												<PortalHost />
+											</ErrorBoundary>
+										</SafeAreaProviderCompat>
+									</TranslationProvider>
+								</ErrorBoundary>
+							</ThemeProvider>
+						</React.Suspense>
+					</AppStateProvider>
+				</React.Suspense>
 			</GestureHandlerRootView>
 		</ErrorBoundary>
 	);

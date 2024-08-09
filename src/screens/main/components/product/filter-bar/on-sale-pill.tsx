@@ -1,31 +1,40 @@
 import * as React from 'react';
 
-import get from 'lodash/get';
 import { useObservableState } from 'observable-hooks';
 import { map } from 'rxjs/operators';
 
-import Pill from '@wcpos/components/src/pill';
+import type { Query } from '@wcpos/query';
+import { ButtonPill, ButtonText } from '@wcpos/tailwind/src/button';
 
 import { useT } from '../../../../../contexts/translations';
 
-const OnSalePill = ({ query }) => {
+type ProductCollection = import('@wcpos/database').ProductCollection;
+
+interface Props {
+	query: Query<ProductCollection>;
+}
+
+/**
+ *
+ */
+const OnSalePill = ({ query }: Props) => {
 	const isActive = useObservableState(
-		query.params$.pipe(map((params) => get(params, ['selector', 'on_sale']))),
-		get(query.getParams(), ['selector', 'on_sale'])
+		query.params$.pipe(map(() => query.findSelector('on_sale'))),
+		query.findSelector('on_sale')
 	);
 	const t = useT();
 
 	return (
-		<Pill
-			icon="badgeDollar"
-			size="small"
-			color={isActive ? 'primary' : 'lightGrey'}
+		<ButtonPill
+			leftIcon="badgeDollar"
+			size="xs"
+			variant={isActive ? 'default' : 'secondary'}
 			onPress={() => query.where('on_sale', isActive ? null : true)}
 			removable={isActive}
 			onRemove={() => query.where('on_sale', null)}
 		>
-			{t('On Sale', { _tags: 'core' })}
-		</Pill>
+			<ButtonText>{t('On Sale', { _tags: 'core' })}</ButtonText>
+		</ButtonPill>
 	);
 };
 

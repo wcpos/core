@@ -1,9 +1,15 @@
 import * as React from 'react';
 
-import { parseISO, format, differenceInMinutes, differenceInHours, isToday } from 'date-fns';
-import { utcToZonedTime } from 'date-fns-tz';
-import { useObservable, useObservableState } from 'observable-hooks';
-import { of } from 'rxjs';
+import {
+	parseISO,
+	format,
+	differenceInMinutes,
+	differenceInHours,
+	isToday,
+	isValid,
+} from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
+import { useObservableState } from 'observable-hooks';
 import { switchMap, map, filter } from 'rxjs/operators';
 
 import { useHeartbeatObservable } from '@wcpos/hooks/src/use-heartbeat';
@@ -14,18 +20,31 @@ import { useT } from '../../../contexts/translations';
 /**
  *
  */
-export const useDateFormat = (gmtDate: string, formatPattern = 'MMMM d, yyyy', fromNow = true) => {
+export const useDateFormat = (gmtDate = '', formatPattern = 'MMMM d, yyyy', fromNow = true) => {
 	const t = useT();
 	const heartbeat$ = useHeartbeatObservable(60000); // every minute
 	const { visibile$ } = usePageVisibility();
 	const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-	const gmtDateObject = parseISO(gmtDate.endsWith('Z') ? gmtDate : `${gmtDate}Z`);
-	const localDate = utcToZonedTime(gmtDateObject, timeZone);
+	let gmtDateObject;
+
+	// Determine if gmtDate is an ISO string or a Unix timestamp
+	if (typeof gmtDate === 'string') {
+		gmtDateObject = parseISO(gmtDate.endsWith('Z') ? gmtDate : `${gmtDate}Z`);
+	} else if (typeof gmtDate === 'number') {
+		gmtDateObject = new Date(gmtDate);
+	} else {
+		throw new Error('Invalid date format');
+	}
+
+	const localDate = toZonedTime(gmtDateObject, timeZone);
 
 	/**
 	 *
 	 */
 	const formatDate = React.useCallback(() => {
+		if (!isValid(localDate)) {
+			return null;
+		}
 		if (fromNow) {
 			const now = new Date();
 			const diffInMinutes = differenceInMinutes(now, localDate);

@@ -1,29 +1,26 @@
 import * as React from 'react';
 
-import { useObservableState } from 'observable-hooks';
-import { useTheme } from 'styled-components/native';
+import { useObservableEagerState } from 'observable-hooks';
 
-import Box from '@wcpos/components/src/box';
-import ErrorBoundary from '@wcpos/components/src/error-boundary';
-import Suspense from '@wcpos/components/src/suspense';
-import Text from '@wcpos/components/src/text';
 import { useRelationalQuery } from '@wcpos/query';
-import log from '@wcpos/utils/src/logger';
+import { Box } from '@wcpos/tailwind/src/box';
+import { Card, CardContent, CardHeader } from '@wcpos/tailwind/src/card';
+import { ErrorBoundary } from '@wcpos/tailwind/src/error-boundary';
+import { HStack } from '@wcpos/tailwind/src/hstack';
+import { Suspense } from '@wcpos/tailwind/src/suspense';
+import { VStack } from '@wcpos/tailwind/src/vstack';
 
 import SimpleProductTableRow from './rows/simple';
 import VariableProductTableRow from './rows/variable';
 import { useBarcode } from './use-barcode';
-import { useAppState } from '../../../../contexts/app-state';
 import { useT } from '../../../../contexts/translations';
-import DataTable from '../../components/data-table';
+import { DataTable } from '../../components/data-table';
 import FilterBar from '../../components/product/filter-bar';
-import Search from '../../components/product/search';
-import TaxBasedOn from '../../components/product/tax-based-on';
-import UISettings from '../../components/ui-settings';
-import { useTaxHelpers } from '../../contexts/tax-helpers';
-import useUI from '../../contexts/ui-settings';
-import { useAddProduct } from '../hooks/use-add-product';
-import { useAddVariation } from '../hooks/use-add-variation';
+import { TaxBasedOn } from '../../components/product/tax-based-on';
+import { QuerySearchInput } from '../../components/query-search-input';
+import { UISettings } from '../../components/ui-settings';
+import { useTaxRates } from '../../contexts/tax-rates';
+import { useUISettings } from '../../contexts/ui-settings';
 
 type ProductDocument = import('@wcpos/database').ProductDocument;
 
@@ -37,17 +34,9 @@ const TABLE_ROW_COMPONENTS = {
  *
  */
 const POSProducts = ({ isColumn = false }) => {
-	const theme = useTheme();
-	const { uiSettings } = useUI('pos.products');
-	const { addProduct } = useAddProduct();
-	const { addVariation } = useAddVariation();
-	const { calcTaxes } = useTaxHelpers();
-	const showOutOfStock = useObservableState(
-		uiSettings.get$('showOutOfStock'),
-		uiSettings.get('showOutOfStock')
-	);
-	const { store } = useAppState();
-	const taxBasedOn = useObservableState(store.tax_based_on$, store.tax_based_on);
+	const { uiSettings } = useUISettings('pos-products');
+	const { calcTaxes } = useTaxRates();
+	const showOutOfStock = useObservableEagerState(uiSettings.showOutOfStock$);
 	const t = useT();
 
 	/**
@@ -58,8 +47,8 @@ const POSProducts = ({ isColumn = false }) => {
 			queryKeys: ['products', { target: 'pos', type: 'relational' }],
 			collectionName: 'products',
 			initialParams: {
-				sortBy: uiSettings.get('sortBy'),
-				sortDirection: uiSettings.get('sortDirection'),
+				sortBy: uiSettings.sortBy,
+				sortDirection: uiSettings.sortDirection,
 			},
 		},
 		{
@@ -67,7 +56,7 @@ const POSProducts = ({ isColumn = false }) => {
 			collectionName: 'variations',
 			initialParams: {
 				sortBy: 'id',
-				sortDirection: uiSettings.get('sortDirection'),
+				sortDirection: uiSettings.sortDirection,
 			},
 			endpoint: 'products/variations',
 			greedy: true,
@@ -109,63 +98,45 @@ const POSProducts = ({ isColumn = false }) => {
 	 *
 	 */
 	return (
-		<Box padding="small" paddingRight={isColumn ? 'none' : 'small'} style={{ height: '100%' }}>
-			<Box
-				raised
-				rounding="medium"
-				style={{ backgroundColor: 'white', flexGrow: 1, flexShrink: 1, flexBasis: '0%' }}
-			>
-				<Box
-					horizontal
-					style={{
-						backgroundColor: theme.colors.grey,
-						borderTopLeftRadius: theme.rounding.medium,
-						borderTopRightRadius: theme.rounding.medium,
-					}}
-				>
+		<Box className={`p-2 h-full ${isColumn && 'pr-0'}`}>
+			<Card className="flex-1">
+				<CardHeader className="p-2 bg-input">
 					<ErrorBoundary>
-						<Box fill space="small">
-							<Box horizontal align="center" padding="small" paddingBottom="none" space="small">
+						<VStack>
+							<HStack>
 								<ErrorBoundary>
-									<Search query={query} addProduct={addProduct} addVariation={addVariation} />
-								</ErrorBoundary>
-								<ErrorBoundary>
-									<UISettings
-										uiSettings={uiSettings}
-										title={t('Product Settings', { _tags: 'core' })}
+									<QuerySearchInput
+										query={query}
+										placeholder={t('Search Products', { _tags: 'core' })}
 									/>
 								</ErrorBoundary>
-							</Box>
-							<Box horizontal padding="small" paddingTop="none">
-								<ErrorBoundary>
-									<FilterBar query={query} />
-								</ErrorBoundary>
-							</Box>
-						</Box>
+								<UISettings
+									uiSettings={uiSettings}
+									title={t('Product Settings', { _tags: 'core' })}
+								/>
+							</HStack>
+							<ErrorBoundary>
+								<FilterBar query={query} />
+							</ErrorBoundary>
+						</VStack>
 					</ErrorBoundary>
-				</Box>
-				<Box style={{ flexGrow: 1, flexShrink: 1, flexBasis: '0%' }}>
+				</CardHeader>
+				<CardContent className="flex-1 p-0">
 					<ErrorBoundary>
 						<Suspense>
 							<DataTable<ProductDocument>
+								id="pos-products"
 								query={query}
-								uiSettings={uiSettings}
 								renderItem={renderItem}
 								noDataMessage={t('No products found', { _tags: 'core' })}
 								estimatedItemSize={100}
 								extraContext={{ taxLocation: 'pos' }}
-								footer={
-									calcTaxes && (
-										<Box fill padding="small" space="xSmall" horizontal>
-											<TaxBasedOn taxBasedOn={taxBasedOn} />
-										</Box>
-									)
-								}
+								footer={calcTaxes && <TaxBasedOn />}
 							/>
 						</Suspense>
 					</ErrorBoundary>
-				</Box>
-			</Box>
+				</CardContent>
+			</Card>
 		</Box>
 	);
 };

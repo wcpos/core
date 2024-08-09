@@ -2,12 +2,29 @@ import * as React from 'react';
 
 import { useNavigation } from '@react-navigation/native';
 
-import Dropdown from '@wcpos/components/src/dropdown';
-import Icon from '@wcpos/components/src/icon';
-import Modal from '@wcpos/components/src/modal';
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from '@wcpos/tailwind/src/alert-dialog';
+import { Button, ButtonText } from '@wcpos/tailwind/src/button';
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from '@wcpos/tailwind/src/dropdown-menu';
+import { Icon } from '@wcpos/tailwind/src/icon';
+import { IconButton } from '@wcpos/tailwind/src/icon-button';
+import { Text } from '@wcpos/tailwind/src/text';
 
-import DeleteDialog from './delete-dialog';
 import { useT } from '../../../../contexts/translations';
+import useDeleteDocument from '../../contexts/use-delete-document';
 import usePullDocument from '../../contexts/use-pull-document';
 
 type Props = {
@@ -15,52 +32,83 @@ type Props = {
 };
 
 const Actions = ({ item: product }: Props) => {
-	const [menuOpened, setMenuOpened] = React.useState(false);
 	const [deleteDialogOpened, setDeleteDialogOpened] = React.useState(false);
 	const navigation = useNavigation();
 	const pullDocument = usePullDocument();
 	const t = useT();
+	const deleteDocument = useDeleteDocument();
+
+	/**
+	 * Handle delete button click
+	 */
+	const handleDelete = React.useCallback(async () => {
+		try {
+			if (product.id) {
+				await deleteDocument(product.id, product.collection);
+			}
+			await product.remove();
+		} finally {
+			//
+		}
+	}, [product, deleteDocument]);
 
 	/**
 	 *
 	 */
 	return (
 		<>
-			<Dropdown
-				withinPortal
-				opened={menuOpened}
-				onClose={() => setMenuOpened(false)}
-				placement="bottom-end"
-				items={[
-					{
-						label: t('Edit', { _tags: 'core' }),
-						action: () => navigation.navigate('EditProduct', { productID: product.uuid }),
-						icon: 'penToSquare',
-					},
-					{
-						label: t('Sync', { _tags: 'core' }),
-						action: () => {
-							if (product.id) {
-								pullDocument(product.id, product.collection);
-							}
-						},
-						icon: 'arrowRotateRight',
-					},
-					{ label: '__' },
-					{
-						label: t('Delete', { _tags: 'core' }),
-						action: () => setDeleteDialogOpened(true),
-						icon: 'trash',
-						type: 'critical',
-					},
-				]}
-			>
-				<Icon name="ellipsisVertical" onPress={() => setMenuOpened(true)} />
-			</Dropdown>
-
-			<Modal opened={deleteDialogOpened} onClose={() => setDeleteDialogOpened(false)}>
-				<DeleteDialog product={product} setDeleteDialogOpened={setDeleteDialogOpened} />
-			</Modal>
+			<DropdownMenu>
+				<DropdownMenuTrigger asChild>
+					<IconButton name="ellipsisVertical" />
+				</DropdownMenuTrigger>
+				<DropdownMenuContent align="end">
+					<DropdownMenuItem
+						onPress={() => navigation.navigate('EditProduct', { productID: product.uuid })}
+					>
+						<Icon name="penToSquare" />
+						<Text>{t('Edit', { _tags: 'core' })}</Text>
+					</DropdownMenuItem>
+					{product.id && (
+						<DropdownMenuItem
+							onPress={() => {
+								if (product.id) {
+									pullDocument(product.id, product.collection);
+								}
+							}}
+						>
+							<Icon name="arrowRotateRight" />
+							<Text>{t('Sync', { _tags: 'core' })}</Text>
+						</DropdownMenuItem>
+					)}
+					<DropdownMenuSeparator />
+					<DropdownMenuItem variant="destructive" onPress={() => setDeleteDialogOpened(true)}>
+						<Icon
+							name="trash"
+							className="fill-destructive web:group-focus:fill-accent-foreground"
+						/>
+						<Text>{t('Delete', { _tags: 'core' })}</Text>
+					</DropdownMenuItem>
+				</DropdownMenuContent>
+			</DropdownMenu>
+			<AlertDialog open={deleteDialogOpened} onOpenChange={setDeleteDialogOpened}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>
+							{t('You are about to delete {product}', { _tags: 'core', product: product.name })}
+						</AlertDialogTitle>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>
+							<Text>{t('Cancel', { _tags: 'core' })}</Text>
+						</AlertDialogCancel>
+						<AlertDialogAction asChild onPress={handleDelete}>
+							<Button variant="destructive">
+								<ButtonText>{t('Delete', { _tags: 'core' })}</ButtonText>
+							</Button>
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</>
 	);
 };

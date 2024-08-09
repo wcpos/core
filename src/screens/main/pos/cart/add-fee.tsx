@@ -1,132 +1,119 @@
 import * as React from 'react';
 
-import isEmpty from 'lodash/isEmpty';
-import { useObservableState } from 'observable-hooks';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
 
-import Box from '@wcpos/components/src/box';
-import Icon from '@wcpos/components/src/icon';
-import Modal from '@wcpos/components/src/modal';
-import Text from '@wcpos/components/src/text';
-import Form from '@wcpos/react-native-jsonschema-form';
-import log from '@wcpos/utils/src/logger';
+import { Form, FormField, FormInput, FormSwitch } from '@wcpos/tailwind/src/form';
+import { VStack } from '@wcpos/tailwind/src/vstack';
 
 import { useT } from '../../../../contexts/translations';
-import { useCurrentOrder } from '../contexts/current-order';
-import { useAddFee } from '../hooks/use-add-fee';
+import { AmountWidget } from '../../components/amount-widget';
+import { TaxClassSelect } from '../../components/tax-class-select';
+import { TaxStatusRadioGroup } from '../../components/tax-status-radio-group';
 
-const initialData = {
-	name: '',
-	total: '',
-	taxable: true,
-	tax_class: '',
-};
+export interface FeeFormValues {
+	name?: string;
+	amount?: number;
+	prices_include_tax?: boolean;
+	tax_status?: string;
+	tax_class?: string;
+}
+
+export interface AddFeeHandle {
+	submit: () => void;
+}
+
+interface AddFeeProps {
+	onSubmit: (data: FeeFormValues) => void;
+}
 
 /**
- * TODO: tax_status = taxable by default, perhaps put this as setting?
+ *
  */
-const AddFee = () => {
-	const [opened, setOpened] = React.useState(false);
-	const [data, setData] = React.useState(initialData);
-	const { currentOrder } = useCurrentOrder();
-	const { addFee } = useAddFee();
-	const currencySymbol = useObservableState(
-		currentOrder.currency_symbol$,
-		currentOrder.currency_symbol
-	);
+export const AddFee = React.forwardRef<AddFeeHandle, AddFeeProps>(({ onSubmit }, ref) => {
 	const t = useT();
 
 	/**
 	 *
 	 */
-	const handleChange = React.useCallback(
-		(newData) => {
-			setData((prev) => ({ ...prev, ...newData }));
+	const formSchema = React.useMemo(
+		() =>
+			z.object({
+				name: z.string().optional(),
+				amount: z.number().optional(),
+				prices_include_tax: z.boolean().optional(),
+				tax_status: z.string().optional(),
+				tax_class: z.string().optional(),
+			}),
+		[]
+	);
+
+	/**
+	 *
+	 */
+	const form = useForm<z.infer<typeof formSchema>>({
+		resolver: zodResolver(formSchema),
+		defaultValues: {
+			name: '',
+			amount: 0,
+			prices_include_tax: true,
+			tax_status: 'taxable',
+			tax_class: 'standard',
 		},
-		[setData]
-	);
+	});
 
 	/**
 	 *
 	 */
-	const handleAddFee = React.useCallback(() => {
-		try {
-			const { name, total, taxable, tax_class } = data;
-			addFee({
-				name: isEmpty(name) ? t('Fee', { _tags: 'core' }) : name,
-				total: isEmpty(total) ? '0' : total,
-				tax_status: taxable ? 'taxable' : 'none',
-				tax_class,
-			});
-			setData(initialData);
-			setOpened(false);
-		} catch (error) {
-			log.error(error);
-		}
-	}, [addFee, data, t]);
-
-	/**
-	 *
-	 */
-	const schema = React.useMemo(
-		() => ({
-			type: 'object',
-			properties: {
-				name: { type: 'string', title: t('Fee Name', { _tags: 'core' }) },
-				total: { type: 'string', title: t('Total', { _tags: 'core' }) },
-				taxable: { type: 'boolean', title: t('Taxable', { _tags: 'core' }) },
-				tax_class: { type: 'string', title: t('Tax Class', { _tags: 'core' }) },
-			},
-		}),
-		[t]
-	);
-
-	/**
-	 *
-	 */
-	const uiSchema = React.useMemo(
-		() => ({
-			total: {
-				'ui:options': { prefix: currencySymbol },
-				'ui:placeholder': '0',
-			},
-			name: {
-				'ui:placeholder': t('Fee', { _tags: 'core' }),
-			},
-		}),
-		[currencySymbol, t]
-	);
+	React.useImperativeHandle(ref, () => ({
+		submit: () => form.handleSubmit(onSubmit)(),
+	}));
 
 	/**
 	 *
 	 */
 	return (
-		<>
-			<Box horizontal space="small" padding="small" align="center">
-				<Box fill>
-					<Text>{t('Add Fee', { _tags: 'core' })}</Text>
-				</Box>
-				<Box>
-					<Icon name="circlePlus" onPress={() => setOpened(true)} />
-				</Box>
-			</Box>
-			<Modal
-				opened={opened}
-				onClose={() => setOpened(false)}
-				title={t('Add Fee', { _tags: 'core' })}
-				primaryAction={{
-					label: t('Add to Cart', { _tags: 'core' }),
-					action: handleAddFee,
-				}}
-				secondaryActions={[
-					{ label: t('Cancel', { _tags: 'core' }), action: () => setOpened(false) },
-				]}
-			>
-				<Box space="small">
-					<Form formData={data} schema={schema} uiSchema={uiSchema} onChange={handleChange} />
-				</Box>
-			</Modal>
-		</>
+		<Form {...form}>
+			<VStack>
+				<FormField
+					control={form.control}
+					name="name"
+					render={({ field }) => (
+						<FormInput
+							label={t('Fee Name', { _tags: 'core' })}
+							placeholder={t('Fee', { _tags: 'core' })}
+							{...field}
+						/>
+					)}
+				/>
+				<FormField
+					control={form.control}
+					name="amount"
+					render={({ field }) => <AmountWidget label={t('Amount', { _tags: 'core' })} {...field} />}
+				/>
+				<FormField
+					control={form.control}
+					name="prices_include_tax"
+					render={({ field }) => (
+						<FormSwitch
+							label={t('Amount Includes Tax', { _tags: 'core' })}
+							description="Description"
+							{...field}
+						/>
+					)}
+				/>
+				<FormField
+					control={form.control}
+					name="tax_status"
+					render={({ field }) => <TaxStatusRadioGroup form={form} field={field} />}
+				/>
+				<FormField
+					control={form.control}
+					name="tax_class"
+					render={({ field }) => <TaxClassSelect field={field} />}
+				/>
+			</VStack>
+		</Form>
 	);
-};
-
-export default AddFee;
+});

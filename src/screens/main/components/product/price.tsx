@@ -1,22 +1,19 @@
 import * as React from 'react';
 
-import { useObservableState } from 'observable-hooks';
+import { Text } from '@wcpos/tailwind/src/text';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@wcpos/tailwind/src/tooltip';
+import { VStack } from '@wcpos/tailwind/src/vstack';
 
-import Box from '@wcpos/components/src/box';
-import Text from '@wcpos/components/src/text';
-import Tooltip from '@wcpos/components/src/tooltip';
-
-import { useAppState } from '../../../../contexts/app-state';
-import { useTaxHelpers } from '../../contexts/tax-helpers';
-import useCurrencyFormat from '../../hooks/use-currency-format';
+import { useTaxRates } from '../../contexts/tax-rates';
+import { useTaxDisplayValues } from '../../hooks/taxes/use-tax-display-values';
+import { useCurrencyFormat } from '../../hooks/use-currency-format';
 
 interface Props {
 	price: string;
-	taxStatus: string;
+	taxStatus: 'taxable' | 'none';
 	taxClass: string;
 	taxDisplay: 'text' | 'tooltip' | 'none';
 	strikethrough?: boolean;
-	taxLocation: 'pos' | 'base';
 }
 
 export const Price = ({
@@ -25,40 +22,29 @@ export const Price = ({
 	taxClass,
 	taxDisplay = 'tooltip',
 	strikethrough,
-	taxLocation,
 }: Props) => {
 	const { format } = useCurrencyFormat();
-	const { store } = useAppState();
-	const taxDisplayShop = useObservableState(store?.tax_display_shop$, store?.tax_display_shop);
-	const calcTaxes = useObservableState(store?.calc_taxes$, store?.calc_taxes);
-	const taxable = taxStatus === 'taxable' && calcTaxes === 'yes';
-	const { getDisplayValues } = useTaxHelpers();
-
-	let displayPrice = price;
-	let taxTotal = 0;
-
-	if (taxable) {
-		const result = getDisplayValues(price, taxClass, taxDisplayShop);
-		displayPrice = result.displayPrice;
-		taxTotal = result.taxTotal;
-	}
+	const { calcTaxes } = useTaxRates();
+	const taxable = taxStatus === 'taxable' && calcTaxes;
+	const { displayValue, taxTotal, inclOrExcl } = useTaxDisplayValues({
+		value: price,
+		taxClass,
+		taxStatus,
+		context: 'shop',
+	});
 
 	/**
 	 * Show price with tax available as tooltip
 	 */
 	if (taxDisplay === 'tooltip' && taxable) {
 		return (
-			<Tooltip content={`${taxDisplayShop === 'incl' ? 'incl.' : 'excl.'} ${format(taxTotal)} tax`}>
-				<Text
-					style={
-						strikethrough
-							? { textDecorationLine: 'line-through', textDecorationStyle: 'solid' }
-							: {}
-					}
-					type={strikethrough ? 'secondary' : undefined}
-				>
-					{format(displayPrice)}
-				</Text>
+			<Tooltip>
+				<TooltipTrigger>
+					<Text className={strikethrough ?? 'line-through	text-muted'}>{format(displayValue)}</Text>
+				</TooltipTrigger>
+				<TooltipContent>
+					<Text>{`${inclOrExcl} ${format(taxTotal)} tax`}</Text>
+				</TooltipContent>
 			</Tooltip>
 		);
 	}
@@ -68,26 +54,15 @@ export const Price = ({
 	 */
 	if (taxDisplay === 'text' && taxable) {
 		return (
-			<Box space="xSmall" align="end">
-				<Text
-					style={
-						strikethrough
-							? { textDecorationLine: 'line-through', textDecorationStyle: 'solid' }
-							: {}
-					}
-					type={strikethrough ? 'textMuted' : undefined}
-				>
-					{format(displayPrice)}
-				</Text>
-				<Text type="textMuted" size="small">
-					{`${taxDisplayShop === 'incl' ? 'incl.' : 'excl.'} ${format(taxTotal)} tax`}
-				</Text>
-			</Box>
+			<VStack className="justify-end">
+				<Text className={strikethrough ?? 'line-through	text-muted'}>{format(displayValue)}</Text>
+				<Text className="text-sm text-muted">{`${inclOrExcl} ${format(taxTotal)} tax`}</Text>
+			</VStack>
 		);
 	}
 
 	// default just show the displayPrice
-	return <Text>{format(displayPrice)}</Text>;
+	return <Text>{format(displayValue)}</Text>;
 };
 
 export default Price;

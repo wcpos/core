@@ -1,28 +1,24 @@
 import * as React from 'react';
-import { View } from 'react-native';
 
-import min from 'lodash/min';
-import { useObservableState } from 'observable-hooks';
+import { useObservableEagerState } from 'observable-hooks';
 
-import Image from '@wcpos/components/src/image';
+import { Image } from '@wcpos/tailwind/src/image';
+
+import { useImageAttachment } from '../../hooks/use-image-attachment';
 
 type AvatarProps = {
 	item: import('@wcpos/database').CustomerDocument;
+	cellWidth: number;
 };
 
+/**
+ *
+ */
 const Avatar = ({ item: customer, cellWidth }: AvatarProps) => {
-	const avatar_url = useObservableState(customer.avatar_url$, customer.avatar_url);
-	const width = min([cellWidth - 16, 100]);
+	const avatarUrl = useObservableEagerState(customer.avatar_url$);
+	const source = useImageAttachment(customer, avatarUrl);
 
-	return (
-		<Image
-			source={avatar_url}
-			style={{ width, height: width, aspectRatio: 1 }}
-			border="rounded"
-			recyclingKey={customer.uuid}
-			// placeholder={<Img source={require('assets/placeholder.png')} />}
-		/>
-	);
+	return <Image source={source} className="w-10 h-10 rounded" recyclingKey={customer.uuid} />;
 };
 
 export default Avatar;

@@ -6,16 +6,14 @@ import get from 'lodash/get';
 import { ObservableResource } from 'observable-hooks';
 import { from } from 'rxjs';
 
-import ErrorBoundary from '@wcpos/components/src/error-boundary';
-import Suspense from '@wcpos/components/src/suspense';
-import Text from '@wcpos/components/src/text';
+import { ErrorBoundary } from '@wcpos/tailwind/src/error-boundary';
+import { Suspense } from '@wcpos/tailwind/src/suspense';
 
 import AddCustomer from './add-customer';
 import Customers from './customers';
 import EditCustomer from './edit-customer';
 import { useT } from '../../../contexts/translations';
 import { ModalLayout } from '../../components/modal-layout';
-import useUI from '../contexts/ui-settings';
 import { useCollection } from '../hooks/use-collection';
 
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';

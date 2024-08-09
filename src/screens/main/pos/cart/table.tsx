@@ -1,128 +1,168 @@
 import * as React from 'react';
+import { ScrollView } from 'react-native';
 
-import { useObservableEagerState, useObservableState } from 'observable-hooks';
-import { map } from 'rxjs/operators';
+import get from 'lodash/get';
+import { useObservableEagerState } from 'observable-hooks';
 
-import ErrorBoundary from '@wcpos/components/src/error-boundary';
-import Table, { TableContextProps } from '@wcpos/components/src/table';
+import { ErrorBoundary } from '@wcpos/tailwind/src/error-boundary';
+import { cn } from '@wcpos/tailwind/src/lib/utils';
+import {
+	Table,
+	TableHeader,
+	TableRow,
+	TableHead,
+	TableBody,
+	TableCell,
+} from '@wcpos/tailwind/src/table2';
+import { Text } from '@wcpos/tailwind/src/text';
 
-import { FeeLineRow } from './rows/fee-line';
-import { LineItemRow } from './rows/line-item';
-import { ShippingLineRow } from './rows/shipping-line';
+import { Actions } from './cells/actions';
+import { FeeAndShippingTotal } from './cells/fee-and-shipping-total';
+import { FeeName } from './cells/fee-name';
+import { FeePrice } from './cells/fee-price';
+import { Price } from './cells/price';
+import { ProductName } from './cells/product-name';
+import { ProductTotal } from './cells/product-total';
+import { Quantity } from './cells/quantity';
+import { RegularPrice } from './cells/regular_price';
+import { ShippingPrice } from './cells/shipping-price';
+import { ShippingTitle } from './cells/shipping-title';
+import { Subtotal } from './cells/subtotal';
 import { useT } from '../../../../contexts/translations';
 import EmptyTableRow from '../../components/empty-table-row';
-import useUI from '../../contexts/ui-settings';
-import { useCurrentOrder } from '../contexts/current-order';
+import { TextCell } from '../../components/text-cell';
+import { useUISettings } from '../../contexts/ui-settings';
+import { useCartLines, CartLine } from '../hooks/use-cart-lines';
+import { getUuidFromLineItemMetaData } from '../hooks/utils';
 
-type ColumnProps = import('@wcpos/components/src/table').ColumnProps;
-type Sort = import('@wcpos/components/src/table').Sort;
-type SortDirection = import('@wcpos/components/src/table').SortDirection;
-type OrderDocument = import('@wcpos/database').OrderDocument;
-type LineItemDocument = import('@wcpos/database').LineItemDocument;
-type FeeLineDocument = import('@wcpos/database').FeeLineDocument;
-type ShippingLineDocument = import('@wcpos/database').ShippingLineDocument;
-type CartItem = LineItemDocument | FeeLineDocument | ShippingLineDocument;
-type UISettingsColumn = import('../../contexts/ui-settings').UISettingsColumn;
-type Cart = (LineItemDocument | FeeLineDocument | ShippingLineDocument)[];
-
-const TABLE_ROW_COMPONENTS = {
-	line_items: LineItemRow,
-	fee_lines: FeeLineRow,
-	shipping_lines: ShippingLineRow,
+const cells = {
+	line_items: {
+		actions: Actions,
+		name: ProductName,
+		price: Price,
+		regular_price: RegularPrice,
+		quantity: Quantity,
+		subtotal: Subtotal,
+		total: ProductTotal,
+	},
+	fee_lines: {
+		actions: Actions,
+		name: FeeName,
+		price: FeePrice,
+		quantity: () => null,
+		subtotal: () => null,
+		total: FeeAndShippingTotal,
+	},
+	shipping_lines: {
+		actions: Actions,
+		name: ShippingTitle,
+		price: ShippingPrice,
+		quantity: () => null,
+		subtotal: () => null,
+		total: FeeAndShippingTotal,
+	},
 };
 
 /**
  *
  */
 const CartTable = () => {
-	const { uiSettings } = useUI('pos.cart');
-	const columns = useObservableState(
-		uiSettings.get$('columns'),
-		uiSettings.get('columns')
-	) as UISettingsColumn[];
+	const { uiSettings, getUILabel } = useUISettings('pos-cart');
+	const uiColumns = useObservableEagerState(uiSettings.columns$);
 	const t = useT();
-	const { currentOrder } = useCurrentOrder();
+	const { line_items, fee_lines, shipping_lines } = useCartLines();
 
 	/**
-	 *
+	 * @TODO - add sorting?
+	 * @NOTE - this a slight different format than the other data tables
 	 */
-	const lineItems = useObservableEagerState(currentOrder.line_items$);
-	const feeLines = useObservableEagerState(currentOrder.fee_lines$);
-	const shippingLines = useObservableEagerState(currentOrder.shipping_lines$);
-
-	const items = Array.isArray(lineItems)
-		? lineItems.map((item) => {
-				const uuidMetaData = item.meta_data.find((meta) => meta.key === '_woocommerce_pos_uuid');
-				if (uuidMetaData && uuidMetaData.value) {
-					return { ...item, uuid: uuidMetaData.value, type: 'line_items' };
-				}
-			})
-		: [];
-
-	const fees = Array.isArray(feeLines)
-		? feeLines.map((item) => {
-				const uuidMetaData = item.meta_data.find((meta) => meta.key === '_woocommerce_pos_uuid');
-				if (uuidMetaData && uuidMetaData.value) {
-					return { ...item, uuid: uuidMetaData.value, type: 'fee_lines' };
-				}
-			})
-		: [];
-
-	const shipping = Array.isArray(shippingLines)
-		? shippingLines.map((item) => {
-				const uuidMetaData = item.meta_data.find((meta) => meta.key === '_woocommerce_pos_uuid');
-				if (uuidMetaData && uuidMetaData.value) {
-					return { ...item, uuid: uuidMetaData.value, type: 'shipping_lines' };
-				}
-			})
-		: [];
-
-	/**
-	 *
-	 */
-	const context = React.useMemo<TableContextProps<CartItem>>(() => {
-		return {
-			columns: columns.filter((column) => column.show),
-			// sort: ({ sortBy, sortDirection }) => {
-			// 	setQuery('sortBy', sortBy);
-			// 	setQuery('sortDirection', sortDirection);
-			// },
-			// sortBy: query.sortBy,
-			// sortDirection: query.sortDirection,
-			headerLabel: ({ column }) => uiSettings.getLabel(column.key),
-		};
-	}, [columns, uiSettings]);
-
-	/**
-	 *
-	 */
-	const renderItem = React.useCallback((props) => {
-		let Component = TABLE_ROW_COMPONENTS[props.item.type];
-
-		// If we still didn't find a component, use LineItemRow
-		if (!Component) {
-			Component = LineItemRow;
-		}
-
-		return (
-			<ErrorBoundary>
-				<Component {...props} />
-			</ErrorBoundary>
-		);
+	const mapItems = React.useCallback((items, type) => {
+		return items.map((item) => ({
+			item,
+			uuid: getUuidFromLineItemMetaData(item.meta_data),
+			type,
+		}));
 	}, []);
 
 	/**
 	 *
 	 */
+	const lines = React.useMemo(() => {
+		return [
+			...mapItems(line_items, 'line_items'),
+			...mapItems(fee_lines, 'fee_lines'),
+			...mapItems(shipping_lines, 'shipping_lines'),
+		];
+	}, [mapItems, line_items, fee_lines, shipping_lines]);
+
+	/**
+	 *
+	 */
+	const columns = React.useMemo(() => {
+		return uiColumns.filter((column) => column.show);
+	}, [uiColumns]);
+
+	/**
+	 *
+	 */
 	return (
-		<Table<CartItem>
-			data={items.concat(fees).concat(shipping)} // estimatedItemSize={46}
-			renderItem={renderItem}
-			context={context}
-			ListEmptyComponent={<EmptyTableRow message={t('Cart is empty', { _tags: 'core' })} />}
-		/>
+		<Table aria-labelledby="cart-table" className="h-full">
+			<TableHeader>
+				<TableRow>
+					{columns.map((column) => {
+						return (
+							<TableHead
+								key={column.key}
+								style={{
+									flexGrow: column.flex ? column.flex : 1,
+									flex: column.width ? '0 0 auto' : undefined,
+									width: column.width ? column.width : undefined,
+								}}
+							>
+								<Text>{getUILabel(column.key)}</Text>
+							</TableHead>
+						);
+					})}
+				</TableRow>
+			</TableHeader>
+			<ScrollView>
+				<TableBody>
+					{lines.map((line) => {
+						return (
+							<TableRow key={line.uuid}>
+								{columns.map((column) => {
+									const Cell = get(cells, [line.type, column.key]);
+									return (
+										<TableCell
+											key={column.key}
+											style={{
+												flexGrow: column.flex ? column.flex : 1,
+												flex: column.width ? '0 0 auto' : undefined,
+												width: column.width ? column.width : undefined,
+											}}
+										>
+											{Cell ? (
+												<ErrorBoundary>
+													<Cell
+														type={line.type}
+														uuid={line.uuid}
+														item={line.item}
+														column={column}
+													/>
+												</ErrorBoundary>
+											) : (
+												<TextCell item={line.item} column={column} />
+											)}
+										</TableCell>
+									);
+								})}
+							</TableRow>
+						);
+					})}
+				</TableBody>
+			</ScrollView>
+		</Table>
 	);
 };
 
-// export default React.memo(CartTable);
 export default CartTable;

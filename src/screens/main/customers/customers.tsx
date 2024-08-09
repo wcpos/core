@@ -1,19 +1,19 @@
 import * as React from 'react';
 
-import { useTheme } from 'styled-components/native';
-
-import Box from '@wcpos/components/src/box';
-import ErrorBoundary from '@wcpos/components/src/error-boundary';
-import Suspense from '@wcpos/components/src/suspense';
 import { useQuery } from '@wcpos/query';
+import { Box } from '@wcpos/tailwind/src/box';
+import { Card, CardContent, CardHeader } from '@wcpos/tailwind/src/card';
+import { ErrorBoundary } from '@wcpos/tailwind/src/error-boundary';
+import { HStack } from '@wcpos/tailwind/src/hstack';
+import { Suspense } from '@wcpos/tailwind/src/suspense';
 
 import cells from './cells';
-import SearchBar from './search-bar';
 import { useT } from '../../../contexts/translations';
 import { AddNewCustomer } from '../components/customer/add-new';
-import DataTable from '../components/data-table';
-import UiSettings from '../components/ui-settings';
-import useUI from '../contexts/ui-settings';
+import { DataTable } from '../components/data-table';
+import { QuerySearchInput } from '../components/query-search-input';
+import { UISettings } from '../components/ui-settings';
+import { useUISettings } from '../contexts/ui-settings';
 
 type CustomerDocument = import('@wcpos/database').CustomerDocument;
 
@@ -21,8 +21,7 @@ type CustomerDocument = import('@wcpos/database').CustomerDocument;
  *
  */
 const Customers = () => {
-	const { uiSettings } = useUI('customers');
-	const theme = useTheme();
+	const { uiSettings } = useUISettings('customers');
 	const t = useT();
 
 	/**
@@ -32,8 +31,8 @@ const Customers = () => {
 		queryKeys: ['customers'],
 		collectionName: 'customers',
 		initialParams: {
-			sortBy: uiSettings.get('sortBy'),
-			sortDirection: uiSettings.get('sortDirection'),
+			sortBy: uiSettings.sortBy,
+			sortDirection: uiSettings.sortDirection,
 		},
 	});
 
@@ -41,41 +40,32 @@ const Customers = () => {
 	 *
 	 */
 	return (
-		<Box padding="small" style={{ height: '100%' }}>
-			<Box
-				raised
-				rounding="medium"
-				style={{ backgroundColor: 'white', flexGrow: 1, flexShrink: 1, flexBasis: '0%' }}
-			>
-				<Box
-					horizontal
-					space="small"
-					padding="small"
-					align="center"
-					style={{
-						backgroundColor: theme.colors.grey,
-						borderTopLeftRadius: theme.rounding.medium,
-						borderTopRightRadius: theme.rounding.medium,
-					}}
-				>
-					<SearchBar query={query} />
-					<AddNewCustomer />
-					<UiSettings uiSettings={uiSettings} title={t('Customer Settings', { _tags: 'core' })} />
-				</Box>
-				<Box style={{ flexGrow: 1, flexShrink: 1, flexBasis: '0%' }}>
+		<Box className="h-full p-2">
+			<Card className="flex-1">
+				<CardHeader className="p-0 bg-input">
+					<HStack className="p-2">
+						<QuerySearchInput
+							query={query}
+							placeholder={t('Search Customers', { _tags: 'core' })}
+						/>
+						<AddNewCustomer />
+						<UISettings uiSettings={uiSettings} title={t('Customer Settings', { _tags: 'core' })} />
+					</HStack>
+				</CardHeader>
+				<CardContent className="flex-1 p-0">
 					<ErrorBoundary>
 						<Suspense>
 							<DataTable<CustomerDocument>
+								id="customers"
 								query={query}
-								uiSettings={uiSettings}
 								cells={cells}
 								noDataMessage={t('No customers found', { _tags: 'core' })}
 								estimatedItemSize={100}
 							/>
 						</Suspense>
 					</ErrorBoundary>
-				</Box>
-			</Box>
+				</CardContent>
+			</Card>
 		</Box>
 	);
 };

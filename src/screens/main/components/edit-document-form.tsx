@@ -1,63 +1,80 @@
 import * as React from 'react';
 
-import Box from '@wcpos/components/src/box';
-import Tabs from '@wcpos/components/src/tabs';
+import get from 'lodash/get';
+import pick from 'lodash/pick';
+import { useObservableEagerState } from 'observable-hooks';
+import { isRxDocument, RxDocument } from 'rxdb';
 
-import Form, { DocumentFormProps } from './document-form';
-import DocumentTree from './document-tree';
-import { useT } from '../../../contexts/translations';
+import Form from '@wcpos/react-native-jsonschema-form';
 
-export type FormWithJSONProps = DocumentFormProps;
+import { EditFormWithJSONTree } from './edit-form-with-json-tree';
+import { useLocalMutation } from '../hooks/mutations/use-local-mutation';
+
+interface CommonProps {
+	document: RxDocument;
+	uiSchema: any;
+	withJSONTree?: boolean;
+}
+
+interface FieldsProps extends CommonProps {
+	fields: string[];
+	schema?: never;
+}
+
+interface SchemaProps extends CommonProps {
+	schema: any;
+	fields?: never;
+}
+
+type Props = FieldsProps | SchemaProps;
 
 /**
- *
+ * A wrapper for the JSON form, which subscribes to changes and patches the document.
  */
-const FormWithJSON = ({ document, fields, uiSchema, ...props }: FormWithJSONProps) => {
-	const [index, setIndex] = React.useState(0);
-	const t = useT();
+export const EditDocumentForm = ({ document, fields, uiSchema, withJSONTree, ...props }: Props) => {
+	if (!isRxDocument(document)) {
+		throw new Error('EditDocumentForm requires an RxDocument');
+	}
+	const { localPatch } = useLocalMutation();
+	const json = useObservableEagerState(document.$).toMutableJSON();
 
 	/**
-	 *
+	 * Get schema
+	 * - allow passing in a schema, otherwise use the collection schema
 	 */
-	const renderScene = React.useCallback(
-		({ route }) => {
-			switch (route.key) {
-				case 'form':
-					return (
-						<Box padding="small">
-							<Form document={document} fields={fields} uiSchema={uiSchema} />
-						</Box>
-					);
-				case 'json':
-					return <DocumentTree document={document} />;
-				default:
-					return null;
-			}
-		},
-		[document, fields, uiSchema]
-	);
+	const schema = React.useMemo(() => {
+		if (props.schema) {
+			return props.schema;
+		}
+		const orderSchema = get(document.collection, 'schema.jsonSchema.properties');
+		return {
+			properties: pick(orderSchema, fields),
+		};
+	}, [document.collection, fields, props.schema]);
 
 	/**
-	 *
+	 * If we want to show the JSON tree
 	 */
-	const routes = React.useMemo(
-		() => [
-			{ key: 'form', title: t('Form', { _tags: 'core' }) },
-			{ key: 'json', title: t('JSON', { _tags: 'core' }) },
-		],
-		[t]
-	);
+	if (withJSONTree) {
+		return (
+			<EditFormWithJSONTree
+				json={json}
+				schema={schema}
+				uiSchema={uiSchema}
+				onChange={({ changes }) => localPatch({ document, data: changes })}
+			/>
+		);
+	}
 
 	/**
 	 *
 	 */
 	return (
-		<Tabs<(typeof routes)[number]>
-			navigationState={{ index, routes }}
-			renderScene={renderScene}
-			onIndexChange={setIndex}
+		<Form
+			formData={json}
+			schema={schema}
+			uiSchema={uiSchema}
+			onChange={({ changes }) => localPatch({ document, data: changes })}
 		/>
 	);
 };
-
-export default FormWithJSON;

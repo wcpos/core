@@ -1,55 +1,30 @@
 import * as React from 'react';
 
-import Icon from '@wcpos/components/src/icon';
-import useSnackbar from '@wcpos/components/src/snackbar';
+import { IconButton } from '@wcpos/tailwind/src/icon-button';
 
-import { useT } from '../../../../../contexts/translations';
-import { useCurrentOrder } from '../../contexts/current-order';
-import { useRemoveItem } from '../../hooks/use-remove-item';
+import { useRemoveLineItem } from '../../hooks/use-remove-line-item';
 
 interface ActionProps {
+	uuid: string;
+	type: 'line_items' | 'fee_lines' | 'shipping_lines';
 	item:
-		| import('@wcpos/database').LineItemDocument
-		| import('@wcpos/database').FeeLineDocument
-		| import('@wcpos/database').ShippingLineDocument;
+		| import('@wcpos/database').OrderDocument['line_items']
+		| import('@wcpos/database').OrderDocument['fee_lines']
+		| import('@wcpos/database').OrderDocument['shipping_lines'];
 }
 
-export const Actions = ({ item }: ActionProps) => {
-	const { currentOrder } = useCurrentOrder();
-	const { removeItem } = useRemoveItem();
-	const addSnackbar = useSnackbar();
-	const t = useT();
+export const Actions = ({ uuid, type, item }: ActionProps) => {
+	const { removeLineItem } = useRemoveLineItem();
 
 	/**
 	 *
 	 */
-	const undoRemove = React.useCallback(async () => {
-		return currentOrder?.incrementalUpdate({
-			$push: {
-				[item.collection.name]: item.toJSON(),
-			},
-		});
-	}, [currentOrder, item]);
-
-	/**
-	 *
-	 */
-	const handleRemove = React.useCallback(async () => {
-		const name = item.name || item.method_title;
-		await item.incrementalRemove();
-		// await removeItem(item);
-
-		// await currentOrder?.removeCartLine(item);
-
-		addSnackbar({
-			message: t('{name} removed from cart', { name, _tags: 'core' }),
-			dismissable: true,
-			action: { label: t('Undo', { _tags: 'core' }), action: undoRemove },
-		});
-	}, [addSnackbar, item, t, undoRemove]);
-
-	/**
-	 *
-	 */
-	return <Icon name="circleXmark" size="xLarge" onPress={handleRemove} type="critical" />;
+	return (
+		<IconButton
+			name="circleXmark"
+			variant="destructive"
+			size="xl"
+			onPress={() => removeLineItem(uuid, type)}
+		/>
+	);
 };

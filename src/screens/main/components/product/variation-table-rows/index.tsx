@@ -3,8 +3,8 @@ import * as React from 'react';
 import get from 'lodash/get';
 
 import Box from '@wcpos/components/src/box';
-import ErrorBoundary from '@wcpos/components/src/error-boundary';
-import Suspense from '@wcpos/components/src/suspense';
+import { ErrorBoundary } from '@wcpos/tailwind/src/error-boundary';
+import { Suspense } from '@wcpos/tailwind/src/suspense';
 import { useQuery } from '@wcpos/query';
 
 import VariationsFilterBar from './filter-bar';
@@ -33,14 +33,14 @@ const Variations = ({ item, initialSelectedAttributes, parentSearchTerm }) => {
 	 * initialSelectedAttributes can change when the user quick selects variation
 	 * so we can't just use the initial value, we need to update the query
 	 */
-	React.useEffect(() => {
-		const hasSelectedAttributes = get(query.getParams(), ['selector', 'attributes']);
-		if (initialSelectedAttributes) {
-			query.updateVariationAttributeSelector(initialSelectedAttributes);
-		} else if (hasSelectedAttributes) {
-			query.resetVariationAttributeSelector();
-		}
-	}, [initialSelectedAttributes, query]);
+	// React.useEffect(() => {
+	// 	const hasSelectedAttributes = get(query.getParams(), ['selector', 'attributes']);
+	// 	if (initialSelectedAttributes) {
+	// 		query.updateVariationAttributeSelector(initialSelectedAttributes);
+	// 	} else if (hasSelectedAttributes) {
+	// 		query.resetVariationAttributeSelector();
+	// 	}
+	// }, [initialSelectedAttributes, query]);
 
 	/**
 	 *

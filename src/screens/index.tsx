@@ -4,12 +4,9 @@ import { NavigationContainer, LinkingOptions } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import * as Linking from 'expo-linking';
 import get from 'lodash/get';
-import { useObservableEagerState, useObservableState } from 'observable-hooks';
+import { useObservableEagerState, useObservableSuspense } from 'observable-hooks';
 import { of } from 'rxjs';
 import { useTheme } from 'styled-components/native';
-
-import Suspense from '@wcpos/components/src/suspense';
-import Text from '@wcpos/components/src/text';
 
 import AuthNavigator from './auth';
 import MainNavigator from './main';
@@ -30,7 +27,10 @@ const Stack = createStackNavigator<RootStackParamList>();
  *
  */
 const RootNavigator = () => {
-	const { store, storeDB, initialProps } = useAppState();
+	const { store, storeDB, fastStoreDB, initialProps, hydrationResource, isReadyResource } =
+		useAppState();
+	useObservableSuspense(hydrationResource); // suspend until hydration is complete
+	useObservableSuspense(isReadyResource); // suspend until app is ready
 	const theme = useTheme();
 	const homepage = get(initialProps, 'homepage');
 	const t = useT();
@@ -38,7 +38,7 @@ const RootNavigator = () => {
 	/**
 	 * store can be null, so we create an observable
 	 */
-	const storeName = useObservableState(store?.name$ ?? of(''), store?.name ?? '');
+	const storeName = useObservableEagerState(store ? store.name$ : of(''));
 
 	/**
 	 * Pathname eg: 'pos' for default web app
@@ -101,6 +101,15 @@ const RootNavigator = () => {
 											EditCustomer: 'edit/:customerID',
 										},
 									},
+									ReportsStack: {
+										path: 'reports',
+										screens: {
+											Reports: '',
+										},
+									},
+									LogsStack: {
+										path: 'logs',
+									},
 									SupportStack: {
 										path: 'support',
 									},
@@ -155,7 +164,7 @@ const RootNavigator = () => {
 				// key={storeDB?.token}
 				screenOptions={{ headerShown: false }}
 			>
-				{storeDB ? (
+				{storeDB && fastStoreDB ? (
 					<Stack.Screen name="MainStack" component={MainNavigator} />
 				) : (
 					<Stack.Screen

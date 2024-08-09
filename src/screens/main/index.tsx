@@ -3,32 +3,37 @@ import { useWindowDimensions } from 'react-native';
 
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { createStackNavigator } from '@react-navigation/stack';
-import { useObservableState } from 'observable-hooks';
+import { useForceUpdate, useObservableEagerState, useSubscription } from 'observable-hooks';
+import { isRxDatabase } from 'rxdb';
 import { useTheme } from 'styled-components/native';
 
-import Icon from '@wcpos/components/src/icon';
-import Portal from '@wcpos/components/src/portal';
 import { OnlineStatusProvider } from '@wcpos/hooks/src/use-online-status';
 import { QueryProvider, QueryDevtools } from '@wcpos/query';
+import { Icon } from '@wcpos/tailwind/src/icon';
 
 import DrawerContent from './components/drawer-content';
 import Header from './components/header';
+import { ExtraDataProvider } from './contexts/extra-data';
 import { UISettingsProvider } from './contexts/ui-settings';
 import CustomersNavigator from './customers';
-import { ErrorSnackbar } from './errors';
+import { Errors } from './errors';
 import Help from './help';
 import useKeyboardShortcuts from './hooks/use-keyboard-shortcuts';
 import { useRestHttpClient } from './hooks/use-rest-http-client';
 import Login from './login';
+import { LogsWithProviders } from './logs';
 import OrdersNavigator from './orders';
 import POSNavigator from './pos';
 import ProductsNavigator from './products';
+import ReportsNavigator from './reports';
 import Settings from './settings';
 import Support from './support';
 import TaxRates from './tax-rates';
+import { UpgradeRequired } from './upgrade-required';
 import { useAppState } from '../../contexts/app-state';
 import { useT } from '../../contexts/translations';
 import { useLocale } from '../../hooks/use-locale';
+import { useVersionCheck } from '../../hooks/use-version-check';
 import { ModalLayout } from '../components/modal-layout';
 
 export type MainStackParamList = {
@@ -46,6 +51,8 @@ export type DrawerParamList = {
 	ProductsStack: undefined;
 	OrdersStack: undefined;
 	CustomersStack: undefined;
+	ReportsStack: undefined;
+	LogsStack: undefined;
 	SupportStack: undefined;
 };
 
@@ -59,6 +66,9 @@ const DrawerNavigator = ({ navigation }) => {
 	const theme = useTheme();
 	useKeyboardShortcuts(); // allows navigation by hotkeys
 	const t = useT();
+	const { site } = useAppState();
+	const license = useObservableEagerState(site.license$);
+	const [showUpgrade, setShowUpgrade] = React.useState(!license?.key);
 
 	const largeScreen = dimensions.width >= theme.screens.medium;
 
@@ -66,7 +76,9 @@ const DrawerNavigator = ({ navigation }) => {
 		<Drawer.Navigator
 			initialRouteName="POSStack"
 			screenOptions={{
-				header: (props) => <Header {...props} />,
+				header: (props) => (
+					<Header {...props} showUpgrade={showUpgrade} setShowUpgrade={setShowUpgrade} />
+				),
 				drawerType: largeScreen ? 'permanent' : 'front',
 				drawerStyle: {
 					backgroundColor: theme.colors.headerBackground,
@@ -85,7 +97,11 @@ const DrawerNavigator = ({ navigation }) => {
 					title: t('POS', { _tags: 'core' }),
 					drawerLabel: t('POS', { _tags: 'core' }),
 					drawerIcon: ({ focused }) => (
-						<Icon name="cashRegister" type={focused ? 'primary' : 'inverse'} size="large" />
+						<Icon
+							name="cashRegister"
+							className={focused ? 'fill-primary' : 'fill-primary-foreground'}
+							size="lg"
+						/>
 					),
 				}}
 			/>
@@ -96,7 +112,11 @@ const DrawerNavigator = ({ navigation }) => {
 					title: t('Products', { _tags: 'core' }),
 					drawerLabel: t('Products', { _tags: 'core' }),
 					drawerIcon: ({ focused }) => (
-						<Icon name="gifts" type={focused ? 'primary' : 'inverse'} size="large" />
+						<Icon
+							name="gifts"
+							className={focused ? 'fill-primary' : 'fill-primary-foreground'}
+							size="lg"
+						/>
 					),
 				}}
 			/>
@@ -107,7 +127,11 @@ const DrawerNavigator = ({ navigation }) => {
 					title: t('Orders', { _tags: 'core' }),
 					drawerLabel: t('Orders', { _tags: 'core' }),
 					drawerIcon: ({ focused }) => (
-						<Icon name="receipt" type={focused ? 'primary' : 'inverse'} size="large" />
+						<Icon
+							name="receipt"
+							className={focused ? 'fill-primary' : 'fill-primary-foreground'}
+							size="lg"
+						/>
 					),
 				}}
 			/>
@@ -118,8 +142,43 @@ const DrawerNavigator = ({ navigation }) => {
 					title: t('Customers', { _tags: 'core' }),
 					drawerLabel: t('Customers', { _tags: 'core' }),
 					drawerIcon: ({ focused }) => (
-						<Icon name="users" type={focused ? 'primary' : 'inverse'} size="large" />
+						<Icon
+							name="users"
+							className={focused ? 'fill-primary' : 'fill-primary-foreground'}
+							size="lg"
+						/>
 					),
+				}}
+			/>
+			<Drawer.Screen
+				name="ReportsStack"
+				component={ReportsNavigator}
+				options={{
+					title: t('Reports', { _tags: 'core' }),
+					drawerLabel: t('Reports', { _tags: 'core' }),
+					drawerIcon: ({ focused }) => (
+						<Icon
+							name="chartMixedUpCircleDollar"
+							className={focused ? 'fill-primary' : 'fill-primary-foreground'}
+							size="lg"
+						/>
+					),
+				}}
+			/>
+			<Drawer.Screen
+				name="LogsStack"
+				component={LogsWithProviders}
+				options={{
+					title: t('Logs', { _tags: 'core' }),
+					drawerLabel: t('Logs', { _tags: 'core' }),
+					drawerIcon: ({ focused }) => (
+						<Icon
+							name="heartPulse"
+							className={focused ? 'fill-primary' : 'fill-primary-foreground'}
+							size="lg"
+						/>
+					),
+					drawerItemStyle: { marginTop: 'auto' },
 				}}
 			/>
 			<Drawer.Screen
@@ -129,9 +188,13 @@ const DrawerNavigator = ({ navigation }) => {
 					title: t('Support', { _tags: 'core' }),
 					drawerLabel: t('Support', { _tags: 'core' }),
 					drawerIcon: ({ focused }) => (
-						<Icon name="commentQuestion" type={focused ? 'primary' : 'inverse'} size="large" />
+						<Icon
+							name="commentQuestion"
+							className={focused ? 'fill-primary' : 'fill-primary-foreground'}
+							size="lg"
+						/>
 					),
-					drawerItemStyle: { marginTop: 'auto' },
+					// drawerItemStyle: { marginTop: 'auto' },
 				}}
 			/>
 		</Drawer.Navigator>
@@ -202,18 +265,37 @@ const TaxRatesScreen = () => {
  *
  */
 const MainNavigator = () => {
-	const { site } = useAppState();
-	const wpAPIURL = useObservableState(site.wp_api_url$, site.wp_api_url);
-	const { storeDB } = useAppState();
-	const http = useRestHttpClient();
+	const { site, storeDB, fastStoreDB } = useAppState();
+	const wpAPIURL = useObservableEagerState(site.wp_api_url$);
 	const { locale } = useLocale();
+	const { wcposVersionPass } = useVersionCheck({ site });
+
+	/**
+	 * The http client should be smarter, ie: if offline or no auth, it should pause the replications
+	 * or put this as part of the OnlineStatusProvider
+	 */
+	const http = useRestHttpClient();
+
+	/**
+	 * If the version is not supported, we should show an error message
+	 */
+	if (!wcposVersionPass) {
+		return <UpgradeRequired />;
+	}
+
+	/**
+	 * Sanity check: we should not proceed if we don't have a storeDB
+	 */
+	if (!isRxDatabase(storeDB)) {
+		return null;
+	}
 
 	return (
-		<QueryProvider localDB={storeDB} http={http} locale={locale}>
-			<UISettingsProvider>
-				<OnlineStatusProvider wpAPIURL={wpAPIURL}>
-					{/** NOTE - we need a portal provider inside main navigator, eg: to access useRestHttpClient  */}
-					<Portal.Provider>
+		<ExtraDataProvider>
+			<QueryProvider localDB={storeDB} fastLocalDB={fastStoreDB} http={http} locale={locale}>
+				<UISettingsProvider>
+					<OnlineStatusProvider wpAPIURL={wpAPIURL}>
+						{/** NOTE - we need a portal provider inside main navigator, eg: to access useRestHttpClient  */}
 						<Stack.Navigator screenOptions={{ headerShown: false }}>
 							<Stack.Screen name="MainDrawer" component={DrawerNavigator} />
 							<Stack.Group screenOptions={{ presentation: 'transparentModal' }}>
@@ -223,13 +305,12 @@ const MainNavigator = () => {
 								<Stack.Screen name="TaxRates" component={TaxRatesScreen} />
 							</Stack.Group>
 						</Stack.Navigator>
-						<Portal.Manager />
-					</Portal.Provider>
-				</OnlineStatusProvider>
-			</UISettingsProvider>
-			<ErrorSnackbar />
-			{/* <QueryDevtools /> */}
-		</QueryProvider>
+					</OnlineStatusProvider>
+				</UISettingsProvider>
+				<Errors /> {/* TODO - we need a app-wide event bus to channel errors to the snackbar */}
+				{/* <QueryDevtools /> */}
+			</QueryProvider>
+		</ExtraDataProvider>
 	);
 };
 

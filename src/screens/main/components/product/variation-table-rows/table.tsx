@@ -3,17 +3,17 @@ import * as React from 'react';
 import get from 'lodash/get';
 import { useObservableSuspense, useObservableState, useSubscription } from 'observable-hooks';
 
-import ErrorBoundary from '@wcpos/components/src/error-boundary';
-import Suspense from '@wcpos/components/src/suspense';
-import Table, { CellRenderer, useTable } from '@wcpos/components/src/table';
-import Text from '@wcpos/components/src/text';
 import { useReplicationState } from '@wcpos/query';
+import { ErrorBoundary } from '@wcpos/tailwind/src/error-boundary';
+import { Suspense } from '@wcpos/tailwind/src/suspense';
+import Table, { CellRenderer, useTable } from '@wcpos/tailwind/src/table';
+import { Text } from '@wcpos/tailwind/src/text';
 import log from '@wcpos/utils/src/logger';
 
 import { useVariationTable } from './context';
 import Footer from './footer';
 import { useT } from '../../../../../contexts/translations';
-import { useMutation } from '../../../hooks/use-mutation';
+import { useMutation } from '../../../hooks/mutations/use-mutation';
 import EmptyTableRow from '../../empty-table-row';
 import { ProductVariationImage } from '../variation-image';
 import { ProductVariationName } from '../variation-name';

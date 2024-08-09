@@ -1,10 +1,9 @@
 import * as React from 'react';
 
-import Box from '@wcpos/components/src/box';
-import ErrorBoundary from '@wcpos/components/src/error-boundary';
+import { Card, CardContent, CardHeader } from '@wcpos/tailwind/src/card';
+import { ErrorBoundary } from '@wcpos/tailwind/src/error-boundary';
 
-import AddFee from './add-fee';
-import AddShipping from './add-shipping';
+import { AddCartItemButtons } from './add-cart-item-buttons';
 import CartHeader from './cart-header';
 
 export interface CartProps {
@@ -13,27 +12,16 @@ export interface CartProps {
 
 const EmptyCart = ({ currentOrder }: CartProps) => {
 	return (
-		<Box
-			raised
-			rounding="medium"
-			// style={{ backgroundColor: 'white' }}
-			style={{ backgroundColor: 'white', flexGrow: 1, flexShrink: 1, flexBasis: '0%' }}
-		>
-			<ErrorBoundary>
-				<CartHeader />
-			</ErrorBoundary>
-
-			<Box>
+		<Card className="flex-1">
+			<CardHeader className="p-2 bg-input">
 				<ErrorBoundary>
-					<AddFee />
+					<CartHeader />
 				</ErrorBoundary>
-			</Box>
-			<Box>
-				<ErrorBoundary>
-					<AddShipping />
-				</ErrorBoundary>
-			</Box>
-		</Box>
+			</CardHeader>
+			<CardContent className="flex-1 p-0">
+				<AddCartItemButtons />
+			</CardContent>
+		</Card>
 	);
 };
 

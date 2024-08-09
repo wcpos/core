@@ -1,7 +1,7 @@
 import * as React from 'react';
 
-import Icon from '@wcpos/components/src/icon';
-import Popover from '@wcpos/components/src/popover';
+import { IconButton } from '@wcpos/tailwind/src/icon-button';
+import { Popover, PopoverContent, PopoverTrigger } from '@wcpos/tailwind/src/popover';
 
 import VariationsPopover from './variations-popover';
 import { useAddVariation } from '../../hooks/use-add-variation';
@@ -14,7 +14,6 @@ interface VariableActionsProps {
  *
  */
 const VariableActions = ({ item: parent }: VariableActionsProps) => {
-	const [opened, setOpened] = React.useState(false);
 	const { addVariation } = useAddVariation();
 
 	// /**
@@ -32,18 +31,13 @@ const VariableActions = ({ item: parent }: VariableActionsProps) => {
 	 *
 	 */
 	return (
-		<Popover withinPortal opened={opened} onClose={() => setOpened(false)} placement="right">
-			<Popover.Target>
-				<Icon
-					name="circleChevronRight"
-					size="xxLarge"
-					type="success"
-					onPress={() => setOpened(true)}
-				/>
-			</Popover.Target>
-			<Popover.Content>
+		<Popover>
+			<PopoverTrigger asChild>
+				<IconButton name="circleChevronRight" variant="success" size="xl" />
+			</PopoverTrigger>
+			<PopoverContent side="right">
 				<VariationsPopover parent={parent} addToCart={addToCart} />
-			</Popover.Content>
+			</PopoverContent>
 		</Popover>
 	);
 };

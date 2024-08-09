@@ -1,9 +1,10 @@
 import * as React from 'react';
 
-import Button from '@wcpos/components/src/button';
-import Icon from '@wcpos/components/src/icon';
-import Loader from '@wcpos/components/src/loader';
 import useHttpClient from '@wcpos/hooks/src/use-http-client';
+import { Button, ButtonText } from '@wcpos/tailwind/src/button';
+import { HStack } from '@wcpos/tailwind/src/hstack';
+import { Icon } from '@wcpos/tailwind/src/icon';
+import { Loader } from '@wcpos/tailwind/src/loader';
 import log from '@wcpos/utils/src/logger';
 
 import { useT } from '../../../contexts/translations';
@@ -36,20 +37,12 @@ const DemoButton = () => {
 	};
 
 	return (
-		<Button
-			title={t('Enter Demo Store', { _tags: 'core' })}
-			background="clear"
-			size="small"
-			type="secondary"
-			accessoryRight={
-				loading ? (
-					<Loader size="small" type="secondary" />
-				) : (
-					<Icon name="arrowRight" size="small" type="secondary" />
-				)
-			}
-			onPress={handleDemoLogin}
-		/>
+		<Button variant="link">
+			<HStack>
+				<ButtonText>{t('Enter Demo Store', { _tags: 'core' })}</ButtonText>
+				{loading ? <Loader size="sm" /> : <Icon name="arrowRight" size="sm" />}
+			</HStack>
+		</Button>
 	);
 };
 

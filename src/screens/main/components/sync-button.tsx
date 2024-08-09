@@ -1,8 +1,16 @@
 import * as React from 'react';
 
-import Dropdown from '@wcpos/components/src/dropdown';
-import Icon from '@wcpos/components/src/icon';
-import Loader from '@wcpos/components/src/loader';
+import {
+	ContextMenu,
+	ContextMenuContent,
+	ContextMenuItem,
+	ContextMenuTrigger,
+} from '@wcpos/tailwind/src/context-menu';
+import { Icon } from '@wcpos/tailwind/src/icon';
+import { IconButton } from '@wcpos/tailwind/src/icon-button';
+import { Loader } from '@wcpos/tailwind/src/loader';
+import { Text } from '@wcpos/tailwind/src/text';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@wcpos/tailwind/src/tooltip';
 
 import { useT } from '../../../contexts/translations';
 
@@ -13,7 +21,6 @@ interface SyncButtonProps {
 }
 
 const SyncButton = ({ sync, clear, active }: SyncButtonProps) => {
-	const [openMenu, setOpenMenu] = React.useState(false);
 	const t = useT();
 
 	/**
@@ -28,37 +35,36 @@ const SyncButton = ({ sync, clear, active }: SyncButtonProps) => {
 	 *
 	 */
 	return active ? (
-		<Loader size="small" />
+		<Loader size="sm" />
 	) : (
-		<Dropdown
-			opened={openMenu}
-			onClose={() => setOpenMenu(false)}
-			placement="top-end"
-			items={[
-				{
-					label: t('Sync', { _tags: 'core' }),
-					action: sync,
-					icon: 'arrowRotateRight',
-				},
-				{ label: '__' },
-				{
-					label: t('Clear and Refresh', { _tags: 'core' }),
-					action: handleClearAndSync,
-					type: 'critical',
-					icon: 'trash',
-				},
-			]}
-			trigger="longpress"
-		>
-			<Icon
-				name="arrowRotateRight"
-				size="small"
-				onPress={sync}
-				onLongPress={() => setOpenMenu(true)}
-				tooltip={t('Press to sync, long press for more options', { _tags: 'core' })}
-				tooltipPlacement="top-end"
-			/>
-		</Dropdown>
+		<ContextMenu>
+			<ContextMenuTrigger>
+				<Tooltip delayDuration={150}>
+					<TooltipTrigger
+						onLongPress={() => {
+							console.log('test');
+						}}
+						onPress={sync}
+						asChild
+					>
+						<IconButton name="arrowRotateRight" size="sm" />
+					</TooltipTrigger>
+					<TooltipContent>
+						<Text>{t('Press to sync, long press for more options', { _tags: 'core' })}</Text>
+					</TooltipContent>
+				</Tooltip>
+			</ContextMenuTrigger>
+			<ContextMenuContent side="top" align="end">
+				<ContextMenuItem onPress={sync}>
+					<Icon name="arrowRotateRight" />
+					<Text>{t('Sync', { _tags: 'core' })}</Text>
+				</ContextMenuItem>
+				<ContextMenuItem onPress={handleClearAndSync}>
+					<Icon name="trash" />
+					<Text>{t('Clear and Refresh', { _tags: 'core' })}</Text>
+				</ContextMenuItem>
+			</ContextMenuContent>
+		</ContextMenu>
 	);
 };
 

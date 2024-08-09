@@ -5,10 +5,10 @@ import isPlainObject from 'lodash/isPlainObject';
 import { useObservableState } from 'observable-hooks';
 import Animated, { useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 
-import ErrorBoundary from '@wcpos/components/src/error-boundary';
-import Suspense from '@wcpos/components/src/suspense';
-import Table, { CellRenderer } from '@wcpos/components/src/table';
-import Text from '@wcpos/components/src/text';
+import { ErrorBoundary } from '@wcpos/tailwind/src/error-boundary';
+import { Suspense } from '@wcpos/tailwind/src/suspense';
+import Table, { CellRenderer } from '@wcpos/tailwind/src/table';
+import { Text } from '@wcpos/tailwind/src/text';
 import log from '@wcpos/utils/src/logger';
 
 import { Date } from '../../components/date';
@@ -18,7 +18,7 @@ import { VariableProductImage } from '../../components/product/variable-image';
 import VariablePrice from '../../components/product/variable-price';
 import Variations from '../../components/product/variation-table-rows';
 import { VariationTableContext } from '../../components/product/variation-table-rows/context';
-import { useMutation } from '../../hooks/use-mutation';
+import { useMutation } from '../../hooks/mutations/use-mutation';
 import Actions from '../cells/actions';
 import Barcode from '../cells/barcode';
 import EdittablePrice from '../cells/edittable-price';

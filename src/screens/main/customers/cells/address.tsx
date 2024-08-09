@@ -1,18 +1,18 @@
 import * as React from 'react';
 
-import { useObservableState } from 'observable-hooks';
+import { useObservableEagerState } from 'observable-hooks';
 
-import Format from '@wcpos/components/src/format';
+import { FormatAddress } from '@wcpos/tailwind/src/format';
 
 type Props = {
 	item: import('@wcpos/database').CustomerDocument;
-	column: import('@wcpos/components/src/table').ColumnProps;
+	column: import('@wcpos/tailwind/src/table').ColumnProps;
 };
 
 const Address = ({ item: customer, column }: Props) => {
-	const address = useObservableState(customer[`${column.key}$`], customer[column.key]);
+	const address = useObservableEagerState(customer[`${column.key}$`]);
 
-	return <Format.Address address={address} showName={false} />;
+	return <FormatAddress address={address} showName={true} />;
 };
 
 export default Address;

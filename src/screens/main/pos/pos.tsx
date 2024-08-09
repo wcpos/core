@@ -3,23 +3,41 @@ import { useWindowDimensions } from 'react-native';
 
 import { useTheme } from 'styled-components/native';
 
-import ErrorBoundary from '@wcpos/components/src/error-boundary';
-import Suspense from '@wcpos/components/src/suspense';
+import { useQuery } from '@wcpos/query';
+import { ErrorBoundary } from '@wcpos/tailwind/src/error-boundary';
+import { Suspense } from '@wcpos/tailwind/src/suspense';
 
 import POSColumns from './columns';
+import { useCurrentOrder } from './contexts/current-order';
 import POSTabs from './tabs';
+import { TaxRatesProvider } from '../contexts/tax-rates';
 
 /**
- * Tax query depends on store.tax_based_on, if customer also depends on currentOrder
+ *
  */
 const POS = () => {
 	const theme = useTheme();
 	const dimensions = useWindowDimensions();
+	const { currentOrder } = useCurrentOrder();
+
+	/**
+	 *
+	 */
+	const taxQuery = useQuery({
+		queryKeys: ['tax-rates'],
+		collectionName: 'taxes',
+	});
 
 	return (
-		<ErrorBoundary>
-			<Suspense>{dimensions.width >= theme.screens.small ? <POSColumns /> : <POSTabs />}</Suspense>
-		</ErrorBoundary>
+		<>
+			<ErrorBoundary>
+				<TaxRatesProvider taxQuery={taxQuery} order={currentOrder}>
+					<Suspense>
+						{dimensions.width >= theme.screens.small ? <POSColumns /> : <POSTabs />}
+					</Suspense>
+				</TaxRatesProvider>
+			</ErrorBoundary>
+		</>
 	);
 };
 

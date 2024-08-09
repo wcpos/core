@@ -1,8 +1,8 @@
 import * as React from 'react';
 
-import { useObservableState } from 'observable-hooks';
+import { useObservableEagerState } from 'observable-hooks';
 
-import Text from '@wcpos/components/src/text';
+import { Text } from '@wcpos/tailwind/src/text';
 
 import { useDateFormat } from '../hooks/use-date-format';
 
@@ -13,7 +13,7 @@ type Document =
 
 interface Props {
 	item: Document;
-	column: import('@wcpos/components/src/table').ColumnProps<Document>;
+	column: import('@wcpos/tailwind/src/table').ColumnProps<Document>;
 }
 
 /**
@@ -21,7 +21,7 @@ interface Props {
  */
 export const Date = ({ item, column }: Props) => {
 	const key = column.key.endsWith('_gmt') ? column.key : column.key + '_gmt';
-	const dateGmt = useObservableState(item[key + '$'], item[key]);
+	const dateGmt = useObservableEagerState(item[key + '$']);
 	const dateFormatted = useDateFormat(dateGmt);
 
 	return <Text>{dateFormatted}</Text>;
