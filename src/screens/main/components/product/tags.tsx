@@ -1,46 +1,35 @@
 import * as React from 'react';
 
-import Pill from '@wcpos/components/src/pill';
-import { useTable } from '@wcpos/components/src/table';
+import { useObservableEagerState } from 'observable-hooks';
 
-type ProductTagsProps = {
-	item: import('@wcpos/database').ProductDocument;
+import { ButtonPill, ButtonText } from '@wcpos/components/src/button';
+import { useDataTable } from '@wcpos/components/src/data-table';
+
+import type { CellContext } from '@tanstack/react-table';
+
+type ProductDocument = import('@wcpos/database').ProductDocument;
+
+/**
+ *
+ */
+export const ProductTags = ({ row }: CellContext<ProductDocument, 'tags'>) => {
+	const product = row.original;
+	const tags = useObservableEagerState(product.tags$);
+	const query = useDataTable();
+
+	/**
+	 *
+	 */
+	return tags.map((tag: any) => {
+		return (
+			<ButtonPill
+				key={tag.id}
+				size="xs"
+				variant="ghost-secondary"
+				onPress={() => query.where('tags', { $elemMatch: { id: tag.id } })}
+			>
+				<ButtonText>{tag.name}</ButtonText>
+			</ButtonPill>
+		);
+	});
 };
-
-const ProductTags = ({ item: product }: ProductTagsProps) => {
-	const { tags } = product;
-	const query = useTable();
-
-	/**
-	 *
-	 */
-	const handleSelectTag = React.useCallback(
-		(tag: any) => {
-			query.where('tags', { $elemMatch: { id: tag.id } });
-		},
-		[query]
-	);
-
-	/**
-	 *
-	 */
-	const tagsArray = React.useMemo(() => {
-		if (Array.isArray(tags)) {
-			return tags.map((tag: any) => {
-				return {
-					key: tag.id,
-					label: tag.name,
-					action: () => handleSelectTag(tag),
-				};
-			});
-		}
-		return [];
-	}, [tags, handleSelectTag]);
-
-	/**
-	 *
-	 */
-	return <Pill.Group pills={tagsArray} size="small" color="darkestGrey" />;
-};
-
-export default ProductTags;

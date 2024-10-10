@@ -1,9 +1,9 @@
-import { useSubscription, useObservableState } from 'observable-hooks';
+import { useSubscription, useObservableEagerState } from 'observable-hooks';
 
-import useSnackbar from '@wcpos/components/src/snackbar';
+import { Toast } from '@wcpos/components/src/toast';
 
 import { useT } from '../../../../contexts/translations';
-import useUI from '../../contexts/ui-settings';
+import { useUISettings } from '../../contexts/ui-settings';
 import { useBarcodeDetection, useBarcodeSearch } from '../../hooks/barcodes';
 import { useCollection } from '../../hooks/use-collection';
 import { useAddProduct } from '../hooks/use-add-product';
@@ -17,14 +17,10 @@ export const useBarcode = (productQuery: Query) => {
 	const { barcodeSearch } = useBarcodeSearch();
 	const { addProduct } = useAddProduct();
 	const { addVariation } = useAddVariation();
-	const showSnackbar = useSnackbar();
 	const t = useT();
 	const { collection: productCollection } = useCollection('products');
-	const { uiSettings } = useUI('pos.products');
-	const showOutOfStock = useObservableState(
-		uiSettings.get$('showOutOfStock'),
-		uiSettings.get('showOutOfStock')
-	);
+	const { uiSettings } = useUISettings('pos-products');
+	const showOutOfStock = useObservableEagerState(uiSettings.showOutOfStock$);
 
 	/**
 	 *
@@ -37,14 +33,14 @@ export const useBarcode = (productQuery: Query) => {
 			message +=
 				', ' + t('{count} products found locally', { count: results.length, _tags: 'core' });
 
-			showSnackbar({ message });
+			Toast.show({ text1: message, type: 'error' });
 			productQuery.search(barcode);
 			return;
 		}
 
 		message += ', ' + t('1 product found locally', { _tags: 'core' });
 
-		showSnackbar({ message });
+		Toast.show({ text1: message, type: 'success' });
 		const [product] = results;
 
 		/**
@@ -65,6 +61,7 @@ export const useBarcode = (productQuery: Query) => {
 				productQuery.search(barcode);
 				return;
 			}
+
 			const parent = await productCollection.findOne({ selector: { id: parent_id } }).exec();
 			if (!parent) {
 				productQuery.search(barcode);

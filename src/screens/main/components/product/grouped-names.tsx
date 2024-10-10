@@ -1,9 +1,15 @@
 import * as React from 'react';
 
+import { CellContext } from '@tanstack/react-table';
 import { useObservableSuspense } from 'observable-hooks';
 
-import Text from '@wcpos/components/src/text';
+import { HStack } from '@wcpos/components/src/hstack';
+import { Text } from '@wcpos/components/src/text';
 import { useQuery } from '@wcpos/query';
+
+import { useT } from '../../../../contexts/translations';
+
+type ProductDocument = import('@wcpos/database').ProductDocument;
 
 /**
  *
@@ -11,21 +17,22 @@ import { useQuery } from '@wcpos/query';
 const GroupedNames = ({ query }) => {
 	const result = useObservableSuspense(query.resource);
 	const names = result.hits.map(({ document }) => document.name);
+	const t = useT();
 
 	return (
-		<Text>
-			<Text size="small" type="secondary">
-				Grouped:{' '}
-			</Text>
-			<Text size="small">{names.join(', ')}</Text>
-		</Text>
+		<HStack className="flex-wrap gap-0">
+			<Text className="text-xs text-muted-foreground">{`${t('Grouped', { _tags: 'core' })}: `}</Text>
+			<Text className="text-xs">{names.join(', ')}</Text>
+		</HStack>
 	);
 };
 
 /**
  *
  */
-const WrappedQuery = ({ parent }) => {
+const WrappedQuery = ({ row }: CellContext<ProductDocument, 'name'>) => {
+	const parent = row.original;
+
 	/**
 	 *
 	 */

@@ -1,24 +1,20 @@
 import * as React from 'react';
 
-import { useObservableState } from 'observable-hooks';
+import { useObservableEagerState } from 'observable-hooks';
 
-import { useAppState } from '../../../../../contexts/app-state';
-import NumberInput from '../../../components/number-input';
-import { useTaxHelpers } from '../../../contexts/tax-helpers';
-import useUI from '../../../contexts/ui-settings';
-import { useCurrentOrder } from '../../contexts/current-order';
+import { CurrencyInput } from '../../../components/currency-input';
+import { useUISettings } from '../../../contexts/ui-settings';
+import { useLineItemData } from '../../hooks/use-line-item-data';
+import { useUpdateLineItem } from '../../hooks/use-update-line-item';
 
+import type { CellContext } from '@tanstack/react-table';
+
+type LineItem = import('@wcpos/database').OrderDocument['line_items'][number];
 interface Props {
-	item: import('@wcpos/database').LineItemDocument;
+	uuid: string;
+	item: LineItem;
+	type: 'line_items';
 }
-
-const getTaxStatus = (meta_data) => {
-	if (!Array.isArray(meta_data)) return undefined;
-
-	const meta = meta_data.find((meta) => meta && meta.key === '_woocommerce_pos_tax_status');
-
-	return meta ? meta.value : undefined;
-};
 
 function ensureNumberArray(input: string | number[]): number[] {
 	if (typeof input === 'string') {
@@ -36,83 +32,26 @@ function ensureNumberArray(input: string | number[]): number[] {
 /**
  *
  */
-export const Price = ({ item }: Props) => {
-	const { currentOrder } = useCurrentOrder();
-
-	// find meta data value when key = _woocommerce_pos_tax_status
-	const taxStatus = getTaxStatus(item.meta_data) ?? 'taxable';
-	const { store } = useAppState();
-	const taxDisplayCart = useObservableState(store.tax_display_cart$, store.tax_display_cart);
-	const { calculateTaxesFromPrice } = useTaxHelpers();
-	const taxes = calculateTaxesFromPrice({
-		price: item.price,
-		taxClass: item.tax_class,
-		taxStatus,
-		pricesIncludeTax: false,
-	});
-	const displayPrice = taxDisplayCart === 'incl' ? item.price + taxes.total : item.price;
+export const Price = ({ row }: CellContext<Props, 'price'>) => {
+	const { item, uuid } = row.original;
+	const { updateLineItem } = useUpdateLineItem();
+	const { getLineItemData } = useLineItemData();
+	const { price } = getLineItemData(item);
 
 	/**
 	 * Discounts
 	 */
-	const { uiSettings } = useUI('pos.cart');
-	const quickDiscounts = useObservableState(
-		uiSettings.get$('quickDiscounts'),
-		uiSettings.get('quickDiscounts')
-	);
-
-	/**
-	 * update subtotal, not price
-	 */
-	const handleUpdate = React.useCallback(
-		async (newValue: string) => {
-			let newPrice = parseFloat(newValue);
-			if (taxDisplayCart === 'incl') {
-				const taxes = calculateTaxesFromPrice({
-					price: newPrice,
-					taxClass: item.tax_class,
-					taxStatus,
-					pricesIncludeTax: true,
-				});
-				newPrice = parseFloat(newValue) - taxes.total;
-			}
-			const newTotal = String(item.quantity * newPrice);
-			currentOrder.incrementalModify((order) => {
-				const updatedLineItems = order.line_items.map((li) => {
-					const uuidMetaData = li.meta_data.find((meta) => meta.key === '_woocommerce_pos_uuid');
-					if (uuidMetaData && uuidMetaData.value === item.uuid) {
-						return {
-							...li,
-							price: newPrice,
-							total: newTotal,
-						};
-					}
-					return li;
-				});
-
-				return { ...order, line_items: updatedLineItems };
-			});
-		},
-		[
-			calculateTaxesFromPrice,
-			currentOrder,
-			item.quantity,
-			item.tax_class,
-			item.uuid,
-			taxDisplayCart,
-			taxStatus,
-		]
-	);
+	const { uiSettings } = useUISettings('pos-cart');
+	const quickDiscounts = useObservableEagerState(uiSettings.quickDiscounts$);
 
 	/**
 	 *
 	 */
 	return (
-		<NumberInput
-			value={String(displayPrice)}
-			onChange={handleUpdate}
-			showDecimals
-			showDiscounts={ensureNumberArray(quickDiscounts)}
+		<CurrencyInput
+			value={parseFloat(price)}
+			onChangeText={(price) => updateLineItem(uuid, { price })}
+			discounts={ensureNumberArray(quickDiscounts)}
 		/>
 	);
 };

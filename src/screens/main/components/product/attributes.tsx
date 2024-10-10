@@ -1,53 +1,67 @@
 import * as React from 'react';
+import { View } from 'react-native';
 
-import { useObservableState } from 'observable-hooks';
+import { CellContext } from '@tanstack/react-table';
+import { useObservableEagerState, useObservableState } from 'observable-hooks';
+import { map } from 'rxjs/operators';
 
-import Box from '@wcpos/components/src/box';
-import Link from '@wcpos/components/src/link';
-import Text from '@wcpos/components/src/text';
+import { Button, ButtonText } from '@wcpos/components/src/button';
+import { HStack } from '@wcpos/components/src/hstack';
+import { Text } from '@wcpos/components/src/text';
+import { VStack } from '@wcpos/components/src/vstack';
 import { useQueryManager } from '@wcpos/query';
 
 import { useVariationTable } from './variation-table-rows/context';
 import { useT } from '../../../../contexts/translations';
 
-type Props = {
-	product: import('@wcpos/database').ProductDocument;
-};
+type ProductDocument = import('@wcpos/database').ProductDocument;
 
-export const PlainAttributes = ({ product }: Props) => {
-	const attributes = useObservableState(product.attributes$, product.attributes);
+/**
+ *
+ */
+export const PlainAttributes = ({ row }: CellContext<ProductDocument, 'name'>) => {
+	const product = row.original;
+	const attributes = useObservableEagerState(product.attributes$);
 
 	/**
 	 *
 	 */
 	return (
-		<Box space="xxSmall">
+		<VStack space="xs">
 			{attributes
 				.filter((attr: any) => !attr.variation)
 				.map((attr: any) => (
-					<Text key={`${attr.name}-${attr.id}`}>
-						<Text size="small" type="secondary">{`${attr.name}: `}</Text>
+					<HStack key={`${attr.name}-${attr.id}`} className="flex-wrap gap-0">
+						<Text className="text-xs text-muted-foreground">{`${attr.name}: `}</Text>
 						{attr.options.map((option: string, index: number) => (
-							<Text size="small" key={option}>
+							<Text className="text-xs" key={option}>
 								{option}
 								{index < attr.options.length - 1 && ', '}
 							</Text>
 						))}
-					</Text>
+					</HStack>
 				))}
-		</Box>
+		</VStack>
 	);
 };
 
-const ProductAttributes = ({ product }: Props) => {
-	const attributes = useObservableState(product.attributes$, product.attributes);
-	const {
-		expanded,
-		setExpanded,
-		setInitialSelectedAttributes,
-		childrenSearchCount,
-		parentSearchTerm,
-	} = useVariationTable();
+/**
+ *
+ */
+export const ProductAttributes = ({ row, table }) => {
+	const product = row.original;
+	const attributes = useObservableEagerState(product.attributes$);
+	const isExpanded = useObservableEagerState(
+		table.options.meta.expanded$.pipe(map((expanded) => !!expanded[row.id]))
+	);
+
+	// const {
+	// 	expanded,
+	// 	setExpanded,
+	// 	setInitialSelectedAttributes,
+	// 	childrenSearchCount,
+	// 	parentSearchTerm,
+	// } = useVariationTable();
 	const manager = useQueryManager();
 	const t = useT();
 
@@ -56,79 +70,77 @@ const ProductAttributes = ({ product }: Props) => {
 	 */
 	const handleSelect = React.useCallback(
 		(attribute, option) => {
-			if (!expanded) {
-				setInitialSelectedAttributes({
-					id: attribute.id,
-					name: attribute.name,
-					option,
-				});
-				setExpanded(true);
-			} else {
-				const query = manager.getQuery(['variations', { parentID: product.id }]);
-				if (query) {
-					query.updateVariationAttributeSelector({
+			row.toggleExpanded(true);
+			const query = manager.getQuery(['variations', { parentID: product.id }]);
+			if (query) {
+				query.where('attributes', {
+					$elemMatch: {
 						id: attribute.id,
 						name: attribute.name,
 						option,
-					});
-				}
+					},
+				});
+			} else {
+				// we need to pass the attribute/option down so it can be used in the table
 			}
 		},
-		[expanded, manager, product.id, setExpanded, setInitialSelectedAttributes]
+		[manager, product.id, row]
 	);
 
 	/**
 	 * Expand text string
 	 */
-	const expandText = React.useMemo(() => {
-		let text = '';
-		if (expanded) {
-			text += t('Collapse', { _tags: 'core' });
-		} else {
-			text += t('Expand', { _tags: 'core' });
-		}
-		if (childrenSearchCount === 1) {
-			text += ' - ';
-			text += t('1 variation found for {term}', {
-				term: parentSearchTerm,
-				_tags: 'core',
-			});
-		} else if (childrenSearchCount > 0) {
-			text += ' - ';
-			text += t('{count} variations found for {term}', {
-				count: childrenSearchCount,
-				term: parentSearchTerm,
-				_tags: 'core',
-			});
-		}
-		return text;
-	}, [childrenSearchCount, expanded, parentSearchTerm, t]);
+	// const expandText = React.useMemo(() => {
+	// 	let text = '';
+	// 	if (expanded) {
+	// 		text += t('Collapse', { _tags: 'core' });
+	// 	} else {
+	// 		text += t('Expand', { _tags: 'core' });
+	// 	}
+	// 	if (childrenSearchCount === 1) {
+	// 		text += ' - ';
+	// 		text += t('1 variation found for {term}', {
+	// 			term: parentSearchTerm,
+	// 			_tags: 'core',
+	// 		});
+	// 	} else if (childrenSearchCount > 0) {
+	// 		text += ' - ';
+	// 		text += t('{count} variations found for {term}', {
+	// 			count: childrenSearchCount,
+	// 			term: parentSearchTerm,
+	// 			_tags: 'core',
+	// 		});
+	// 	}
+	// 	return text;
+	// }, [childrenSearchCount, expanded, parentSearchTerm, t]);
 
 	/**
 	 *
 	 */
 	return (
-		<Box space="xxSmall">
-			{attributes
+		<VStack space="xs">
+			{(attributes || [])
 				.filter((attr: any) => attr.variation)
 				.map((attr: any) => (
-					<Text key={`${attr.name}-${attr.id}`}>
-						<Text size="small" type="secondary">{`${attr.name}: `}</Text>
+					<HStack key={`${attr.name}-${attr.id}`} className="flex-wrap gap-0">
+						<Text className="text-xs text-muted-foreground">{`${attr.name}: `}</Text>
 						{attr.options.map((option: string, index: number) => (
 							<React.Fragment key={option}>
-								<Link size="small" onPress={() => handleSelect(attr, option)}>
+								<Text
+									className="text-xs text-primary"
+									variant="link"
+									onPress={() => handleSelect(attr, option)}
+								>
 									{option}
-								</Link>
-								{index < attr.options.length - 1 && ', '}
+								</Text>
+								<Text className="text-xs">{index < attr.options.length - 1 && ', '}</Text>
 							</React.Fragment>
 						))}
-					</Text>
+					</HStack>
 				))}
-			<Link size="small" onPress={() => setExpanded(!expanded)}>
-				{expandText}
-			</Link>
-		</Box>
+			<Text className="text-xs text-primary" variant="link" onPress={() => row.toggleExpanded()}>
+				{isExpanded ? 'Collapse' : 'Expand'}
+			</Text>
+		</VStack>
 	);
 };
-
-export default ProductAttributes;

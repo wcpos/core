@@ -1,17 +1,28 @@
 import * as React from 'react';
 
+import { CellContext } from '@tanstack/react-table';
 import isFinite from 'lodash/isFinite';
-import { useObservableState } from 'observable-hooks';
+import { useObservableEagerState } from 'observable-hooks';
 
-import Text from '@wcpos/components/src/text';
+import { Text } from '@wcpos/components/src/text';
 
-type Props = {
-	item: import('@wcpos/database').ProductDocument;
-};
+import { useAppState } from '../../../../../contexts/app-state';
 
-export const StockQuantity = ({ item: product }: Props) => {
-	const stockQuantity = useObservableState(product.stock_quantity$, product.stock_quantity);
-	const manageStock = useObservableState(product.manage_stock$, product.manage_stock);
+type ProductDocument = import('@wcpos/database').ProductDocument;
+type Props = CellContext<ProductDocument, string> & { className?: string };
 
-	return manageStock && isFinite(stockQuantity) ? <Text>{stockQuantity}</Text> : null;
+/**
+ * @TODO - update the useCurrencyFormat hook to handle the decimal separator for quantity
+ */
+export const StockQuantity = ({ row, className }: Props) => {
+	const product = row.original;
+	const stockQuantity = useObservableEagerState(product.stock_quantity$);
+	const manageStock = useObservableEagerState(product.manage_stock$);
+	const { store } = useAppState();
+	const decimalSeparator = useObservableEagerState(store.price_decimal_sep$);
+	const displayStockQuantity = String(stockQuantity).replace('.', decimalSeparator);
+
+	return manageStock && isFinite(stockQuantity) ? (
+		<Text className={className}>{displayStockQuantity}</Text>
+	) : null;
 };

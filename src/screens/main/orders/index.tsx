@@ -1,21 +1,16 @@
 import * as React from 'react';
 
-import { StackActions } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import get from 'lodash/get';
 import { ObservableResource } from 'observable-hooks';
-import { from } from 'rxjs';
 
-import ErrorBoundary from '@wcpos/components/src/error-boundary';
-import Suspense from '@wcpos/components/src/suspense';
-import Text from '@wcpos/components/src/text';
+import { ErrorBoundary } from '@wcpos/components/src/error-boundary';
+import { Suspense } from '@wcpos/components/src/suspense';
 
-import EditOrder from './edit-order';
+import { EditOrder } from './edit-order';
 import Orders from './orders';
-import { useT } from '../../../contexts/translations';
-import { ModalLayout } from '../../components/modal-layout';
 import { useCollection } from '../hooks/use-collection';
-import Receipt from '../receipt';
+import { ReceiptModal } from '../receipt';
 
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -49,28 +44,16 @@ const EditOrderWithProviders = ({
 }: NativeStackScreenProps<OrdersStackParamList, 'EditOrder'>) => {
 	const orderID = get(route, ['params', 'orderID']);
 	const { collection } = useCollection('orders');
-	const t = useT();
+	const query = collection.findOneFix(orderID);
 
-	const resource = React.useMemo(
-		() => new ObservableResource(from(collection.findOneFix(orderID).exec())),
-		[collection, orderID]
-	);
+	const resource = React.useMemo(() => new ObservableResource(query.$), [query]);
 
 	return (
-		<ModalLayout
-			title={t('Edit Order', { _tags: 'core' })}
-			primaryAction={{ label: t('Save to Server', { _tags: 'core' }) }}
-			secondaryActions={[
-				{
-					label: t('Cancel', { _tags: 'core' }),
-					action: () => navigation.dispatch(StackActions.pop(1)),
-				},
-			]}
-		>
+		<ErrorBoundary>
 			<Suspense>
 				<EditOrder resource={resource} />
 			</Suspense>
-		</ModalLayout>
+		</ErrorBoundary>
 	);
 };
 
@@ -82,30 +65,16 @@ const ReceiptWithProviders = ({
 }: NativeStackScreenProps<OrdersStackParamList, 'Receipt'>) => {
 	const orderID = get(route, ['params', 'orderID']);
 	const { collection } = useCollection('orders');
-	const t = useT();
+	const query = collection.findOneFix(orderID);
 
-	const resource = React.useMemo(
-		() => new ObservableResource(from(collection.findOneFix(orderID).exec())),
-		[collection, orderID]
-	);
+	const resource = React.useMemo(() => new ObservableResource(query.$), [query]);
 
 	return (
-		<ModalLayout
-			title={t('Receipt', { _tags: 'core' })}
-			primaryAction={{
-				label: t('Print Receipt', { _tags: 'core' }),
-			}}
-			secondaryActions={[
-				{
-					label: t('Email Receipt', { _tags: 'core' }),
-				},
-			]}
-			style={{ height: '100%' }}
-		>
+		<ErrorBoundary>
 			<Suspense>
-				<Receipt resource={resource} />
+				<ReceiptModal resource={resource} />
 			</Suspense>
-		</ModalLayout>
+		</ErrorBoundary>
 	);
 };
 

@@ -1,51 +1,72 @@
 import * as React from 'react';
 
-import isEmpty from 'lodash/isEmpty';
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from '@wcpos/components/src/select';
 
-import { ComboboxWithLabel } from '@wcpos/components/src/combobox';
-import { TextInputWithLabel } from '@wcpos/components/src/textinput';
+import { StatesProvider, useStates } from '../../../../contexts/countries';
+import { useT } from '../../../../contexts/translations';
 
-import useCountries, { CountriesProvider } from '../../../../contexts/countries';
+/**
+ *
+ */
+export const _StateSelect = React.forwardRef<React.ElementRef<typeof Select>, any>(
+	({ value, onValueChange, ...props }, ref) => {
+		const t = useT();
+		const states = useStates();
+		const options = React.useMemo(
+			() =>
+				(states || []).map((state) => ({
+					label: state.name,
+					value: state.code,
+				})),
+			[states]
+		);
 
-export const StateSelect = ({ label, value, onChange }) => {
-	const country = useCountries();
-	const options = React.useMemo(
-		() =>
-			country.states
-				? country.states.map((state) => ({
-						label: state.name,
-						value: state.code,
-				  }))
-				: [],
-		[country.states]
-	);
+		// /**
+		//  * HACK: if old state value is set and country changes
+		//  */
+		// React.useEffect(() => {
+		// 	const selected = options.find((option) => option.value === value);
+		// 	if (!isEmpty(value) && !selected) {
+		// 		onChange('');
+		// 	}
+		// }, [onChange, options, value]);
 
-	/**
-	 * HACK: if old state value is set and country changes
-	 */
-	React.useEffect(() => {
-		const selected = options.find((option) => option.value === value);
-		if (!isEmpty(value) && !selected) {
-			onChange('');
-		}
-	}, [onChange, options, value]);
-
-	/**
-	 * If no state options, let them type
-	 */
-	if (isEmpty(options)) {
-		return <TextInputWithLabel label={label} value={value} onChangeText={onChange} />;
+		return (
+			<Select
+				ref={ref}
+				value={{ ...value, label: options.find((option) => option.value === value?.value)?.label }}
+				onValueChange={onValueChange}
+			>
+				<SelectTrigger>
+					<SelectValue placeholder={t('Select State', { _tags: 'core' })} />
+				</SelectTrigger>
+				<SelectContent>
+					{options.map((option) => (
+						<SelectItem key={option.value} value={option.value} label={option.label}>
+							{option.label}
+						</SelectItem>
+					))}
+				</SelectContent>
+			</Select>
+		);
 	}
+);
 
-	return <ComboboxWithLabel label={label} options={options} value={value} onChange={onChange} />;
-};
-
-const StateSelectWithProvider = ({ country, ...props }) => {
-	return (
-		<CountriesProvider countryCode={country}>
-			<StateSelect {...props} />
-		</CountriesProvider>
-	);
-};
-
-export default StateSelectWithProvider;
+/**
+ * We need the provider before the combobox list so that we can display the label
+ */
+export const StateSelect = React.forwardRef<React.ElementRef<typeof _StateSelect>, any>(
+	({ countryCode, ...props }, ref) => {
+		return (
+			<StatesProvider countryCode={countryCode}>
+				<_StateSelect ref={ref} {...props} />
+			</StatesProvider>
+		);
+	}
+);

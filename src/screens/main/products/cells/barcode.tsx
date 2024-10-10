@@ -1,20 +1,18 @@
 import * as React from 'react';
-import { View } from 'react-native';
 
-import { useObservableState } from 'observable-hooks';
+import { CellContext } from '@tanstack/react-table';
+import { useObservableEagerState } from 'observable-hooks';
 
-import TextInput from '@wcpos/components/src/textinput';
+import { Input } from '@wcpos/components/src/input';
 
 type ProductDocument = import('@wcpos/database').ProductDocument;
 
-type Props = {
-	item: ProductDocument;
-	column: import('@wcpos/components/src/table').ColumnProps<ProductDocument>;
-	onChange: (product: ProductDocument, data: Record<string, unknown>) => void;
-};
-
-const Barcode = ({ item: product, column, onChange }: Props) => {
-	const barcode = useObservableState(product.barcode$, product.barcode);
+/**
+ *
+ */
+export const Barcode = ({ row }: CellContext<ProductDocument, 'name'>) => {
+	const product = row.original;
+	const barcode = useObservableEagerState(product.barcode$);
 	const [value, setValue] = React.useState(barcode);
 
 	/**
@@ -27,9 +25,9 @@ const Barcode = ({ item: product, column, onChange }: Props) => {
 	/**
 	 *
 	 */
-	const handleOnBlur = React.useCallback(() => {
-		onChange(product, { barcode: value });
-	}, [onChange, product, value]);
+	// const handleOnBlur = React.useCallback(() => {
+	// 	onChange(product, { barcode: value });
+	// }, [onChange, product, value]);
 
 	/**
 	 *
@@ -42,10 +40,10 @@ const Barcode = ({ item: product, column, onChange }: Props) => {
 	 *
 	 */
 	return (
-		<View style={{ width: '100%' }}>
-			<TextInput value={value} onChangeText={handleChangeText} onBlur={handleOnBlur} />
-		</View>
+		<Input
+			value={value}
+			onChangeText={handleChangeText}
+			//onBlur={handleOnBlur}
+		/>
 	);
 };
-
-export default Barcode;
