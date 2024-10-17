@@ -4,12 +4,8 @@ import { NavigationContainer, LinkingOptions } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import * as Linking from 'expo-linking';
 import get from 'lodash/get';
-import { useObservableEagerState, useObservableState } from 'observable-hooks';
+import { useObservableEagerState, useObservableSuspense } from 'observable-hooks';
 import { of } from 'rxjs';
-import { useTheme } from 'styled-components/native';
-
-import Suspense from '@wcpos/components/src/suspense';
-import Text from '@wcpos/components/src/text';
 
 import AuthNavigator from './auth';
 import MainNavigator from './main';
@@ -30,15 +26,17 @@ const Stack = createStackNavigator<RootStackParamList>();
  *
  */
 const RootNavigator = () => {
-	const { store, storeDB, initialProps } = useAppState();
-	const theme = useTheme();
+	const { store, storeDB, fastStoreDB, initialProps, hydrationResource, isReadyResource } =
+		useAppState();
+	useObservableSuspense(hydrationResource); // suspend until hydration is complete
+	useObservableSuspense(isReadyResource); // suspend until app is ready
 	const homepage = get(initialProps, 'homepage');
 	const t = useT();
 
 	/**
 	 * store can be null, so we create an observable
 	 */
-	const storeName = useObservableState(store?.name$ ?? of(''), store?.name ?? '');
+	const storeName = useObservableEagerState(store ? store.name$ : of(''));
 
 	/**
 	 * Pathname eg: 'pos' for default web app
@@ -101,6 +99,15 @@ const RootNavigator = () => {
 											EditCustomer: 'edit/:customerID',
 										},
 									},
+									ReportsStack: {
+										path: 'reports',
+										screens: {
+											Reports: '',
+										},
+									},
+									LogsStack: {
+										path: 'logs',
+									},
 									SupportStack: {
 										path: 'support',
 									},
@@ -123,11 +130,11 @@ const RootNavigator = () => {
 			theme={{
 				dark: false,
 				colors: {
-					primary: theme.colors.primary,
-					background: theme.colors.bodyBackground,
+					primary: '#127FBF',
+					background: '#F0F4F8',
 					card: 'rgb(255, 255, 255)',
-					text: theme.colors.text,
-					border: theme.colors.border,
+					text: '#243B53',
+					border: '#D9E2EC',
 					notification: 'rgb(255, 69, 58)',
 				},
 			}}
@@ -155,7 +162,7 @@ const RootNavigator = () => {
 				// key={storeDB?.token}
 				screenOptions={{ headerShown: false }}
 			>
-				{storeDB ? (
+				{storeDB && fastStoreDB ? (
 					<Stack.Screen name="MainStack" component={MainNavigator} />
 				) : (
 					<Stack.Screen

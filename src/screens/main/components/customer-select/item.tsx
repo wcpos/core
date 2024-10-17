@@ -1,8 +1,9 @@
 import * as React from 'react';
 
-import { Avatar } from '@wcpos/components/src/avatar/avatar';
-import Box from '@wcpos/components/src/box';
-import Text from '@wcpos/components/src/text';
+import { Avatar } from '@wcpos/components/src/avatar';
+import { HStack } from '@wcpos/components/src/hstack';
+import { Text } from '@wcpos/components/src/text';
+import { VStack } from '@wcpos/components/src/vstack';
 
 import { useT } from '../../../../contexts/translations';
 
@@ -12,52 +13,36 @@ interface CustomerSelectItemProps {
 	customer: CustomerDocument;
 }
 
-const CustomerSelectItem = ({ customer }: CustomerSelectItemProps) => {
+export const CustomerSelectItem = ({ customer }: CustomerSelectItemProps) => {
 	const t = useT();
 
 	if (customer.id === 0) {
 		return (
-			<Box horizontal space="small" fill>
-				<Box>
-					<Avatar
-						size="small"
-						source="https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y"
-						recyclingKey="guest"
-					/>
-				</Box>
-				<Box space="xSmall" fill>
-					<Text>{t('Guest', { _tags: 'core' })}</Text>
-				</Box>
-			</Box>
+			<HStack className="items-center">
+				<Avatar
+					source="https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y"
+					recyclingKey="guest"
+				/>
+				<Text className="flex-1">{t('Guest', { _tags: 'core' })}</Text>
+			</HStack>
 		);
-	}
-
-	return (
-		<Box horizontal space="small" fill>
-			<Box>
-				<Avatar source={customer.avatar_url} size="small" recyclingKey={customer.uuid} />
-			</Box>
-			<Box space="xSmall" fill>
-				<Box horizontal>
+	} else {
+		return (
+			<HStack className="items-start">
+				<Avatar source={customer.avatar_url} recyclingKey={customer.uuid} />
+				<VStack space="sm">
 					<Text>
 						{customer.first_name} {customer.last_name}
 					</Text>
-				</Box>
-				<Box horizontal>
-					<Text size="small" type="secondary">
-						{customer.email}
-					</Text>
-				</Box>
-				{(customer.company || customer.phone) && (
-					<Box horizontal>
-						<Text size="small" type="secondary">
+
+					<Text className="text-sm">{customer.email}</Text>
+					{(customer.company || customer.phone) && (
+						<Text className="text-sm">
 							{customer.company} {customer.phone ? `• ${customer.phone}` : ''}
 						</Text>
-					</Box>
-				)}
-			</Box>
-		</Box>
-	);
+					)}
+				</VStack>
+			</HStack>
+		);
+	}
 };
-
-export default CustomerSelectItem;

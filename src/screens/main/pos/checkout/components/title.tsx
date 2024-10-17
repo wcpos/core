@@ -1,19 +1,23 @@
 import * as React from 'react';
 
-import { useObservableState } from 'observable-hooks';
+import { useObservableEagerState } from 'observable-hooks';
 
-import Text from '@wcpos/components/src/text';
+import { Text } from '@wcpos/components/src/text';
 
 import { useT } from '../../../../../contexts/translations';
-import useCurrencyFormat from '../../../hooks/use-currency-format';
+import { useCurrencyFormat } from '../../../hooks/use-currency-format';
 
 interface CheckoutTitleProps {
 	order: import('@wcpos/database').OrderDocument;
 }
 
+/**
+ *
+ */
 const CheckoutTitle = ({ order }: CheckoutTitleProps) => {
-	const { format } = useCurrencyFormat();
-	const total = useObservableState(order.total$, order.total);
+	const currencySymbol = useObservableEagerState(order.currency_symbol$);
+	const total = useObservableEagerState(order.total$);
+	const { format } = useCurrencyFormat({ currencySymbol });
 	const t = useT();
 
 	if (!order) {
@@ -21,7 +25,7 @@ const CheckoutTitle = ({ order }: CheckoutTitleProps) => {
 	}
 
 	return (
-		<Text size="large" align="center" weight="bold">
+		<Text className="text-lg font-bold text-center">
 			{t('Amount to Pay', { _tags: 'core' })}
 			{`: ${format(total || 0)}`}
 		</Text>

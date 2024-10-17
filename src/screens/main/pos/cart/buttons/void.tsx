@@ -2,8 +2,8 @@ import * as React from 'react';
 
 import { useNavigation } from '@react-navigation/native';
 
-import Button from '@wcpos/components/src/button';
-import useSnackbar from '@wcpos/components/src/snackbar';
+import { Button } from '@wcpos/components/src/button';
+import { Toast } from '@wcpos/components/src/toast';
 import log from '@wcpos/utils/src/logger';
 
 import { useT } from '../../../../../contexts/translations';
@@ -13,9 +13,8 @@ import { useCurrentOrder } from '../../contexts/current-order';
 /**
  *
  */
-const VoidButton = () => {
+export const VoidButton = () => {
 	const { currentOrder } = useCurrentOrder();
-	const addSnackbar = useSnackbar();
 	const navigation = useNavigation();
 	const deleteDocument = useDeleteDocument();
 	const t = useT();
@@ -45,31 +44,27 @@ const VoidButton = () => {
 			deleteDocument(latest.id, latest.collection);
 		}
 		latest.remove();
-		addSnackbar({
-			message: t('Order removed', { _tags: 'core' }),
-			dismissable: true,
-			action: { label: t('Undo', { _tags: 'core' }), action: () => undoRemove(orderJson) },
+		Toast.show({
+			type: 'success',
+			text1: t('Order removed', { _tags: 'core' }),
+			props: {
+				dismissable: true,
+				action: { label: t('Undo', { _tags: 'core' }), action: () => undoRemove(orderJson) },
+			},
 		});
-	}, [currentOrder, addSnackbar, t, deleteDocument, undoRemove]);
+	}, [currentOrder, t, deleteDocument, undoRemove]);
 
 	/**
 	 *
 	 */
 	return (
 		<Button
-			fill
-			size="large"
-			title={t('Void', { _tags: 'core' })}
+			size="lg"
 			onPress={handleRemove}
-			type="critical"
-			style={{
-				flex: 1,
-				borderTopLeftRadius: 0,
-				borderTopRightRadius: 0,
-				borderBottomRightRadius: 0,
-			}}
-		/>
+			variant="destructive"
+			className="rounded-t-none rounded-br-none flex-1"
+		>
+			{t('Void', { _tags: 'core' })}
+		</Button>
 	);
 };
-
-export default VoidButton;

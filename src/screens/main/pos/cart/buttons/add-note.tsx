@@ -1,77 +1,76 @@
 import * as React from 'react';
-import { TextInput } from 'react-native';
 
-import { useObservableState } from 'observable-hooks';
+import { useObservableEagerState } from 'observable-hooks';
 
-import Button from '@wcpos/components/src/button';
-import Modal, { useModal } from '@wcpos/components/src/modal';
-import TextArea from '@wcpos/components/src/textarea';
+import { Button } from '@wcpos/components/src/button';
+import {
+	Dialog,
+	DialogTrigger,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogBody,
+	DialogFooter,
+	DialogClose,
+	DialogAction,
+} from '@wcpos/components/src/dialog';
+import { Textarea } from '@wcpos/components/src/textarea';
 
 import { useT } from '../../../../../contexts/translations';
+import { useLocalMutation } from '../../../hooks/mutations/use-local-mutation';
 import { useCurrentOrder } from '../../contexts/current-order';
-
-/**
- * @TODO - this
- */
-const AddNote = ({ order, setOpened }) => {
-	const note = useObservableState(order.customer_note$, order.customer_note);
-	const [value, setValue] = React.useState(note);
-	const { setPrimaryAction } = useModal();
-	const t = useT();
-
-	React.useEffect(() => {
-		setValue(note);
-	}, [note]);
-
-	setPrimaryAction({
-		label: t('Add Note', { _tags: 'core' }),
-		action: async () => {
-			await order.incrementalPatch({ customer_note: value });
-			setOpened(false);
-		},
-	});
-
-	return <TextArea value={value} onChangeText={setValue} autoFocus />;
-};
 
 /**
  *
  */
-const AddNoteButton = () => {
+export const AddNoteButton = () => {
 	const { currentOrder } = useCurrentOrder();
-	const [opened, setOpened] = React.useState(false);
+	const note = useObservableEagerState(currentOrder.customer_note$);
 	const t = useT();
+	const { localPatch } = useLocalMutation();
+	const [open, setOpen] = React.useState(false);
+	const [text, onChangeText] = React.useState(note);
+
+	/**
+	 * Keep text in sync with note
+	 */
+	React.useEffect(() => {
+		onChangeText(note);
+	}, [note]);
+
+	/**
+	 *
+	 */
+	const handleSave = React.useCallback(async () => {
+		await localPatch({
+			document: currentOrder,
+			data: {
+				customer_note: text,
+			},
+		});
+		setOpen(false);
+	}, [currentOrder, localPatch, text]);
 
 	/**
 	 *
 	 */
 	return (
-		<>
-			<Button
-				title={t('Order Note', { _tags: 'core' })}
-				background="outline"
-				onPress={() => setOpened(true)}
-				style={{ flex: 1 }}
-			/>
-
-			{opened && (
-				<Modal
-					opened={opened}
-					onClose={() => setOpened(false)}
-					title={t('Order Note', { _tags: 'core' })}
-					// primaryAction={{ label: t('Add Note', { _tags: 'core' }) }}
-					secondaryActions={[
-						{
-							label: t('Cancel', { _tags: 'core' }),
-							action: () => setOpened(false),
-						},
-					]}
-				>
-					<AddNote order={currentOrder} setOpened={setOpened} />
-				</Modal>
-			)}
-		</>
+		<Dialog open={open} onOpenChange={setOpen}>
+			<DialogTrigger asChild>
+				<Button variant="outline">{t('Order Note', { _tags: 'core' })}</Button>
+			</DialogTrigger>
+			<DialogContent>
+				<DialogHeader>
+					<DialogTitle>{t('Order Note', { _tags: 'core' })}</DialogTitle>
+				</DialogHeader>
+				<DialogBody>
+					<Textarea autoFocus value={text} minHeight={80} onChangeText={onChangeText} />
+				</DialogBody>
+				<DialogFooter>
+					<DialogClose>{t('Cancel', { _tags: 'core' })}</DialogClose>
+					<DialogAction onPress={handleSave}>{t('Add Note', { _tags: 'core' })}</DialogAction>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
 	);
 };
-
-export default AddNoteButton;

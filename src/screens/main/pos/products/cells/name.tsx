@@ -1,62 +1,54 @@
 import * as React from 'react';
 
 import find from 'lodash/find';
-import { useObservableState } from 'observable-hooks';
+import { useObservableEagerState, useObservableState } from 'observable-hooks';
 
-import Box from '@wcpos/components/src/box';
-import Text from '@wcpos/components/src/text';
+import { Text } from '@wcpos/components/src/text';
+import { VStack } from '@wcpos/components/src/vstack';
 
-import Attributes, { PlainAttributes } from '../../../components/product/attributes';
-import Categories from '../../../components/product/categories';
+import { MetaData } from './meta-data';
+import { ProductAttributes, PlainAttributes } from '../../../components/product/attributes';
+import { ProductCategories } from '../../../components/product/categories';
 import GroupedNames from '../../../components/product/grouped-names';
 import StockQuantity from '../../../components/product/stock-quantity';
-import Tags from '../../../components/product/tags';
+import { ProductTags } from '../../../components/product/tags';
 
-interface Props {
-	item: import('@wcpos/database').ProductDocument;
-	column: import('@wcpos/components/src/table').ColumnProps<
-		import('@wcpos/database').ProductDocument
-	>;
-}
+import type { CellContext } from '@tanstack/react-table';
 
-export const Name = ({ item: product, column }: Props) => {
-	const name = useObservableState(product.name$, product.name);
-	const { display } = column;
+type ProductDocument = import('@wcpos/database').ProductDocument;
 
-	/**
-	 *
-	 */
-	const show = React.useCallback(
-		(key: string): boolean => {
-			const d = find(display, { key });
-			return !!(d && d.show);
-		},
-		[display]
-	);
+/**
+ *
+ */
+export const Name = (props: CellContext<ProductDocument, 'name'>) => {
+	const product = props.row.original;
+	const show = props.column.columnDef.meta.show;
+	const name = useObservableEagerState(product.name$);
 
 	/**
 	 *
 	 */
 
 	return (
-		<Box space="xSmall" style={{ width: '100%' }}>
-			<Text weight="bold">{name}</Text>
-			{show('sku') && <Text size="small">{product.sku}</Text>}
-			{show('barcode') && <Text size="small">{product.barcode}</Text>}
-			{show('stock_quantity') && <StockQuantity product={product} size="small" />}
-			{show('categories') && <Categories item={product} />}
-			{show('tags') && <Tags item={product} />}
-			{show('attributes') && <PlainAttributes product={product} />}
+		<VStack space="xs" className="w-full">
+			<Text className="font-bold">{name}</Text>
+			{show('sku') && <Text className="text-small">{product.sku}</Text>}
+			{show('barcode') && <Text className="text-small">{product.barcode}</Text>}
+			{show('stock_quantity') && <StockQuantity {...props} className="text-sm" />}
+			{show('meta_data') && <MetaData product={product} />}
+			{show('categories') && <ProductCategories {...props} />}
+			{show('tags') && <ProductTags {...props} />}
+			{show('attributes') && <PlainAttributes {...props} />}
 
 			{product.type === 'variable' && (
-				<Attributes
-					product={product}
+				<ProductAttributes
+					{...props}
 					// variationQuery={variationQuery}
 					// setVariationQuery={setVariationQuery}
 				/>
 			)}
 
-			{product.type === 'grouped' && <GroupedNames parent={product} />}
-		</Box>
+			{product.type === 'grouped' && <GroupedNames {...props} />}
+		</VStack>
 	);
 };

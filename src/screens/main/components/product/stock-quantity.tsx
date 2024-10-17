@@ -1,21 +1,31 @@
 import * as React from 'react';
 
+import { CellContext } from '@tanstack/react-table';
 import isFinite from 'lodash/isFinite';
-import { useObservableState } from 'observable-hooks';
+import { useObservableEagerState } from 'observable-hooks';
 
-import Text from '@wcpos/components/src/text';
+import { Text } from '@wcpos/components/src/text';
 
+import { useAppState } from '../../../../contexts/app-state';
 import { useT } from '../../../../contexts/translations';
 
-interface Props {
-	product: import('@wcpos/database').ProductDocument;
-	size?: import('@wcpos/components/src/text').TextProps['size'];
-}
+type ProductDocument = import('@wcpos/database').ProductDocument;
+type ProductVariationDocument = import('@wcpos/database').ProductVariationDocument;
+type Props = CellContext<ProductDocument | ProductVariationDocument, 'name'> & {
+	className?: string;
+};
 
-const StockQuantity = ({ product, size }: Props) => {
-	const stockQuantity = useObservableState(product.stock_quantity$, product.stock_quantity);
-	const manageStock = useObservableState(product.manage_stock$, product.manage_stock);
+/**
+ *
+ */
+const StockQuantity = ({ row, className }: Props) => {
+	const product = row.original;
+	const stockQuantity = useObservableEagerState(product.stock_quantity$);
+	const manageStock = useObservableEagerState(product.manage_stock$);
 	const t = useT();
+	const { store } = useAppState();
+	const decimalSeparator = useObservableEagerState(store.price_decimal_sep$);
+	const displayStockQuantity = String(stockQuantity).replace('.', decimalSeparator);
 
 	/**
 	 * Early exit
@@ -25,7 +35,9 @@ const StockQuantity = ({ product, size }: Props) => {
 	}
 
 	return (
-		<Text size={size}>{t('{quantity} in stock', { quantity: stockQuantity, _tags: 'core' })}</Text>
+		<Text className={className}>
+			{t('{quantity} in stock', { quantity: displayStockQuantity, _tags: 'core' })}
+		</Text>
 	);
 };
 
