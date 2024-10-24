@@ -1,59 +1,36 @@
 import * as React from 'react';
 
 import get from 'lodash/get';
-import { useObservable, useSubscription } from 'observable-hooks';
-import { combineLatest } from 'rxjs';
-import { debounceTime, distinctUntilChanged, map } from 'rxjs/operators';
 
-import ErrorBoundary from '@wcpos/components/src/error-boundary';
-import Suspense from '@wcpos/components/src/suspense';
+import { ErrorBoundary } from '@wcpos/components/src/error-boundary';
+import { Suspense } from '@wcpos/components/src/suspense';
 import Table, { CellRenderer, TableProps } from '@wcpos/components/src/table';
-import Text from '@wcpos/components/src/text';
+import { Text } from '@wcpos/components/src/text';
 
-import { useShippingTaxCalculation } from './use-shipping-tax-calculation';
 import { Actions } from '../cells/actions';
+import { FeeAndShippingTotal } from '../cells/fee-and-shipping-total';
+import { ShippingPrice } from '../cells/shipping-price';
 import { ShippingTitle } from '../cells/shipping-title';
-import { ShippingTotal } from '../cells/shipping-total';
 
-type ShippingLineDocument = import('@wcpos/database').ShippingLineDocument;
-type RenderItem = TableProps<ShippingLineDocument>['renderItem'];
+type ShippingLine = import('@wcpos/database').OrderDocument['shipping_lines'][number];
+type RenderItem = TableProps<ShippingLine>['renderItem'];
 
 const cells = {
 	actions: Actions,
 	name: ShippingTitle,
-	price: () => null,
+	price: ShippingPrice,
 	subtotal: () => null,
-	total: ShippingTotal,
+	total: FeeAndShippingTotal,
 };
-
-/**
- * When rxdb properties are updated, they emit for each, eg: total and subtotal
- * This triggers unnecessary calculations, so we debounce the updates
- */
-const DEBOUNCE_TIME_MS = 10;
 
 /**
  *
  */
-export const ShippingLineRow: RenderItem = ({ item, index, target }) => {
-	// const { calculateShippingLineTaxes } = useShippingTaxCalculation(item);
-
-	// const shippingLine$ = useObservable(
-	// 	() =>
-	// 		combineLatest([item.total$]).pipe(
-	// 			map(([total]) => ({ total })),
-	// 			distinctUntilChanged((prev, next) => JSON.stringify(prev) === JSON.stringify(next)),
-	// 			debounceTime(DEBOUNCE_TIME_MS)
-	// 		),
-	// 	[]
-	// );
-
-	// useSubscription(shippingLine$, calculateShippingLineTaxes);
-
+export const ShippingLineRow = ({ uuid, item, index, target }) => {
 	/**
 	 *
 	 */
-	const cellRenderer = React.useCallback<CellRenderer<ShippingLineDocument>>(
+	const cellRenderer = React.useCallback<CellRenderer<ShippingLine>>(
 		({ item, column, index, cellWidth }) => {
 			const Cell = get(cells, column.key);
 
@@ -61,7 +38,14 @@ export const ShippingLineRow: RenderItem = ({ item, index, target }) => {
 				return (
 					<ErrorBoundary>
 						<Suspense>
-							<Cell item={item} column={column} index={index} cellWidth={cellWidth} />
+							<Cell
+								type="shipping_lines"
+								uuid={uuid}
+								item={item}
+								column={column}
+								index={index}
+								cellWidth={cellWidth}
+							/>
 						</Suspense>
 					</ErrorBoundary>
 				);
@@ -73,7 +57,7 @@ export const ShippingLineRow: RenderItem = ({ item, index, target }) => {
 
 			return null;
 		},
-		[]
+		[uuid]
 	);
 
 	return <Table.Row item={item} index={index} target={target} cellRenderer={cellRenderer} />;

@@ -1,51 +1,40 @@
 import * as React from 'react';
 
-import find from 'lodash/find';
-import { useObservableState } from 'observable-hooks';
+import { useObservableEagerState } from 'observable-hooks';
 
-import Box from '@wcpos/components/src/box';
-import { useTable } from '@wcpos/components/src/table';
+import { useDataTable } from '@wcpos/components/src/data-table';
+import { VStack } from '@wcpos/components/src/vstack';
 
-import PriceWithTax from '../../../components/product/price';
+import { PriceWithTax } from '../../../components/product/price-with-tax';
 
-interface Props {
-	item: import('@wcpos/database').ProductDocument;
-	column: import('@wcpos/components/src/table').ColumnProps<
-		import('@wcpos/database').ProductDocument
-	>;
-}
+import type { CellContext } from '@tanstack/react-table';
 
-export const Price = ({ item: product, column }: Props) => {
-	const price = useObservableState(product.price$, product.price);
-	const regular_price = useObservableState(product.regular_price$, product.regular_price);
-	const taxStatus = useObservableState(product.tax_status$, product.tax_status);
-	const taxClass = useObservableState(product.tax_class$, product.tax_class);
-	const { display } = column;
-	const context = useTable();
+type ProductDocument = import('@wcpos/database').ProductDocument;
 
-	/**
-	 * TODO - move this into the ui as a helper function
-	 */
-	const show = React.useCallback(
-		(key: string): boolean => {
-			const d = find(display, { key });
-			return !!(d && d.show);
-		},
-		[display]
-	);
+/**
+ *
+ */
+export const Price = ({ row, column }: CellContext<{ document: ProductDocument }, 'price'>) => {
+	const product = row.original.document;
+	const price = useObservableEagerState(product.price$);
+	const regular_price = useObservableEagerState(product.regular_price$);
+	const taxStatus = useObservableEagerState(product.tax_status$);
+	const taxClass = useObservableEagerState(product.tax_class$);
+	const onSale = useObservableEagerState(product.on_sale$);
+	const context = useDataTable();
 
-	const showRegularPrice = show('on_sale') && parseFloat(price) !== parseFloat(regular_price);
+	const showRegularPrice = column.columnDef.meta.show('on_sale') && onSale;
 
 	/**
 	 *
 	 */
 	return showRegularPrice ? (
-		<Box space="xSmall" align="end">
+		<VStack space="xs" className="justify-end">
 			<PriceWithTax
 				price={regular_price}
 				taxStatus={taxStatus}
 				taxClass={taxClass}
-				taxDisplay={show('tax') ? 'text' : 'tooltip'}
+				taxDisplay={column.columnDef.meta.show('tax') ? 'text' : 'tooltip'}
 				taxLocation={context?.taxLocation}
 				strikethrough
 			/>
@@ -53,19 +42,17 @@ export const Price = ({ item: product, column }: Props) => {
 				price={price}
 				taxStatus={taxStatus}
 				taxClass={taxClass}
-				taxDisplay={show('tax') ? 'text' : 'tooltip'}
+				taxDisplay={column.columnDef.meta.show('tax') ? 'text' : 'tooltip'}
 				taxLocation={context?.taxLocation}
 			/>
-		</Box>
+		</VStack>
 	) : (
 		<PriceWithTax
 			price={price}
 			taxStatus={taxStatus}
 			taxClass={taxClass}
-			taxDisplay={show('tax') ? 'text' : 'tooltip'}
+			taxDisplay={column.columnDef.meta.show('tax') ? 'text' : 'tooltip'}
 			taxLocation={context?.taxLocation}
 		/>
 	);
 };
-
-export default Price;

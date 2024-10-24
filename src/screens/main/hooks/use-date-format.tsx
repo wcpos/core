@@ -1,60 +1,70 @@
 import * as React from 'react';
 
-import { parseISO, format, differenceInMinutes, differenceInHours, isToday } from 'date-fns';
-import { utcToZonedTime } from 'date-fns-tz';
-import { useObservable, useObservableState } from 'observable-hooks';
-import { of } from 'rxjs';
+import { UTCDate, utc } from '@date-fns/utc';
+import {
+	parseISO,
+	format,
+	differenceInMinutes,
+	differenceInHours,
+	isToday,
+	isValid,
+	formatDistance,
+} from 'date-fns';
+import * as Locales from 'date-fns/locale';
+import { useObservableState } from 'observable-hooks';
 import { switchMap, map, filter } from 'rxjs/operators';
 
 import { useHeartbeatObservable } from '@wcpos/hooks/src/use-heartbeat';
 import { usePageVisibility } from '@wcpos/hooks/src/use-page-visibility';
 
 import { useT } from '../../../contexts/translations';
+import { useLocale } from '../../../hooks/use-locale';
 
 /**
  *
  */
-export const useDateFormat = (gmtDate: string, formatPattern = 'MMMM d, yyyy', fromNow = true) => {
+export const useDateFormat = (gmtDate = '', formatPattern = 'MMMM d, yyyy', fromNow = true) => {
 	const t = useT();
 	const heartbeat$ = useHeartbeatObservable(60000); // every minute
 	const { visibile$ } = usePageVisibility();
-	const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-	const gmtDateObject = parseISO(gmtDate.endsWith('Z') ? gmtDate : `${gmtDate}Z`);
-	const localDate = utcToZonedTime(gmtDateObject, timeZone);
+	const { locale } = useLocale();
+	const dateLocale = Locales[locale.slice(0, 2)] ? Locales[locale.slice(0, 2)] : undefined;
+
+	let gmtDateObject;
+
+	// Determine if gmtDate is an ISO string or a Unix timestamp
+	if (typeof gmtDate === 'string') {
+		gmtDateObject = parseISO(gmtDate.endsWith('Z') ? gmtDate : `${gmtDate}Z`);
+	} else if (typeof gmtDate === 'number') {
+		gmtDateObject = new Date(gmtDate);
+	} else {
+		throw new Error('Invalid date format');
+	}
 
 	/**
 	 *
 	 */
 	const formatDate = React.useCallback(() => {
-		if (fromNow) {
-			const now = new Date();
-			const diffInMinutes = differenceInMinutes(now, localDate);
-			const diffInHours = differenceInHours(now, localDate);
-
-			if (diffInMinutes < 1) {
-				return t('just now', { _tags: 'core' });
-			} else if (diffInMinutes < 2) {
-				return t('a minute ago', { _tags: 'core' });
-			} else if (diffInMinutes < 60) {
-				return t('{x} mins ago', { _tags: 'core', x: diffInMinutes });
-			} else if (diffInHours < 2) {
-				return t('an hour ago', { _tags: 'core' });
-			} else if (diffInHours < 24) {
-				return t('{x} hours ago', { _tags: 'core', x: diffInHours });
-			} else {
-				return format(localDate, formatPattern);
-			}
-		} else {
-			return format(localDate, formatPattern);
+		if (!isValid(gmtDateObject)) {
+			return null;
 		}
-	}, [localDate, fromNow, t, formatPattern]);
+
+		const now = new UTCDate();
+		const diffInHours = differenceInHours(now, gmtDateObject);
+
+		if (fromNow && diffInHours < 24) {
+			return formatDistance(gmtDateObject, now, { addSuffix: true, locale: dateLocale });
+		} else {
+			return format(gmtDateObject, formatPattern, { in: utc, locale: dateLocale });
+		}
+	}, [gmtDateObject, fromNow, formatPattern, dateLocale]);
 
 	/**
 	 *
 	 */
 	return useObservableState(
 		visibile$.pipe(
-			filter(() => isToday(localDate)),
+			filter(() => isToday(gmtDateObject, { in: utc })),
 			switchMap(() => heartbeat$),
 			map(formatDate)
 		),

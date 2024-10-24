@@ -1,36 +1,24 @@
 import * as React from 'react';
 
-import find from 'lodash/find';
-import { useObservableState } from 'observable-hooks';
+import { useObservableEagerState } from 'observable-hooks';
 
-import { useTable } from '@wcpos/components/src/table';
+import { useDataTable } from '@wcpos/components/src/data-table';
 
-import PriceWithTax from '../../components/product/price';
+import { PriceWithTax } from '../../components/product/price-with-tax';
 
-type Props = {
-	item: import('@wcpos/database').ProductDocument;
-	column: import('@wcpos/components/src/table').ColumnProps<
-		import('@wcpos/database').ProductDocument
-	>;
-};
+import type { CellContext } from '@tanstack/react-table';
 
-const Price = ({ item: product, column }: Props) => {
-	const price = useObservableState(product.price$, product.price);
-	const taxStatus = useObservableState(product.tax_status$, product.tax_status);
-	const taxClass = useObservableState(product.tax_class$, product.tax_class);
-	const { display } = column;
-	const context = useTable();
+type ProductDocument = import('@wcpos/database').ProductDocument;
 
-	/**
-	 *
-	 */
-	const show = React.useCallback(
-		(key: string): boolean => {
-			const d = find(display, { key });
-			return !!(d && d.show);
-		},
-		[display]
-	);
+/**
+ *
+ */
+export const Price = ({ row, column }: CellContext<{ document: ProductDocument }, 'price'>) => {
+	const product = row.original.document;
+	const price = useObservableEagerState(product.price$);
+	const taxStatus = useObservableEagerState(product.tax_status$);
+	const taxClass = useObservableEagerState(product.tax_class$);
+	const context = useDataTable();
 
 	/**
 	 *
@@ -40,10 +28,8 @@ const Price = ({ item: product, column }: Props) => {
 			price={price}
 			taxStatus={taxStatus}
 			taxClass={taxClass}
-			taxDisplay={show('tax') ? 'text' : 'tooltip'}
+			taxDisplay={column.columnDef.meta.show('tax') ? 'text' : 'tooltip'}
 			taxLocation={context?.taxLocation}
 		/>
 	);
 };
-
-export default Price;

@@ -1,21 +1,17 @@
 import * as React from 'react';
 
-import find from 'lodash/find';
 import { useObservableState } from 'observable-hooks';
 
-import Box from '@wcpos/components/src/box';
-import { useTable } from '@wcpos/components/src/table';
-import Text from '@wcpos/components/src/text';
+import { useDataTable } from '@wcpos/components/src/data-table';
+import { HStack } from '@wcpos/components/src/hstack';
+import { Text } from '@wcpos/components/src/text';
 import log from '@wcpos/utils/src/logger';
 
-import PriceWithTax from './price';
+import { PriceWithTax } from './price-with-tax';
 
-interface Props {
-	item: import('@wcpos/database').ProductDocument;
-	column: import('@wcpos/components/src/table').ColumnProps<
-		import('@wcpos/database').ProductDocument
-	>;
-}
+import type { CellContext } from '@tanstack/react-table';
+
+type ProductDocument = import('@wcpos/database').ProductDocument;
 
 /**
  *
@@ -45,41 +41,33 @@ function getVariablePrices(metaData) {
 /**
  *
  */
-const VariablePrice = ({ item: product, column }: Props) => {
+export const VariableProductPrice = ({
+	row,
+	column,
+}: CellContext<{ document: ProductDocument }, 'price' | 'regular_price' | 'sale_price'>) => {
+	const product = row.original.document;
 	const taxStatus = useObservableState(product.tax_status$, product.tax_status);
 	const taxClass = useObservableState(product.tax_class$, product.tax_class);
-	const { display } = column;
-	const context = useTable();
+	const context = useDataTable();
 
 	const metaData = useObservableState(product.meta_data$, product.meta_data);
 	const variablePrices = getVariablePrices(metaData);
 
 	/**
-	 * TODO - abstract this
-	 */
-	const show = React.useCallback(
-		(key: string): boolean => {
-			const d = find(display, { key });
-			return !!(d && d.show);
-		},
-		[display]
-	);
-
-	/**
 	 * No variable prices found?!
 	 */
-	if (variablePrices && !variablePrices[column.key]) {
+	if (variablePrices && !variablePrices[column.id]) {
 		return null;
 	}
 
 	// min and max exist by are equal
-	if (variablePrices[column.key].min === variablePrices[column.key].max) {
+	if (variablePrices[column.id].min === variablePrices[column.id].max) {
 		return (
 			<PriceWithTax
-				price={variablePrices[column.key].max}
+				price={variablePrices[column.id].max}
 				taxStatus={taxStatus}
 				taxClass={taxClass}
-				taxDisplay={show('tax') ? 'text' : 'tooltip'}
+				taxDisplay={column.columnDef.meta.show('tax') ? 'text' : 'tooltip'}
 				taxLocation={context?.taxLocation}
 			/>
 		);
@@ -87,24 +75,22 @@ const VariablePrice = ({ item: product, column }: Props) => {
 
 	// default, min and max are different
 	return (
-		<Box align="end">
+		<HStack className="flex-wrap gap-1 justify-end">
 			<PriceWithTax
-				price={variablePrices[column.key].min}
+				price={variablePrices[column.id].min}
 				taxStatus={taxStatus}
 				taxClass={taxClass}
-				taxDisplay={show('tax') ? 'text' : 'tooltip'}
+				taxDisplay={column.columnDef.meta.show('tax') ? 'text' : 'tooltip'}
 				taxLocation={context?.taxLocation}
 			/>
 			<Text> - </Text>
 			<PriceWithTax
-				price={variablePrices[column.key].max}
+				price={variablePrices[column.id].max}
 				taxStatus={taxStatus}
 				taxClass={taxClass}
-				taxDisplay={show('tax') ? 'text' : 'tooltip'}
+				taxDisplay={column.columnDef.meta.show('tax') ? 'text' : 'tooltip'}
 				taxLocation={context?.taxLocation}
 			/>
-		</Box>
+		</HStack>
 	);
 };
-
-export default VariablePrice;

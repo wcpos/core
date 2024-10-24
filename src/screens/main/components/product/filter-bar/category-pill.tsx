@@ -2,30 +2,38 @@ import * as React from 'react';
 
 import { useObservableSuspense, ObservableResource } from 'observable-hooks';
 
-import Pill from '@wcpos/components/src/pill';
+import { ButtonPill, ButtonText } from '@wcpos/components/src/button';
+import {
+	Combobox,
+	ComboboxTriggerPrimitive,
+	ComboboxContent,
+} from '@wcpos/components/src/combobox';
+import { Query } from '@wcpos/query';
 
 import { useT } from '../../../../../contexts/translations';
-import CategorySelect from '../category-select';
+import { CategorySearch } from '../category-select';
 
-interface CategoryPillProps {
-	query: any;
-	resource: ObservableResource<import('@wcpos/database').ProductTagDocument>;
+type ProductCollection = import('@wcpos/database').ProductCollection;
+
+interface Props {
+	query: Query<ProductCollection>;
+	resource: ObservableResource<import('@wcpos/database').ProductCategoryDocument>;
 }
 
 /**
  *
  */
-const CategoryPill = ({ query, resource }: CategoryPillProps) => {
-	const [openSelect, setOpenSelect] = React.useState(false);
+export const CategoryPill = ({ query, resource }: Props) => {
 	const category = useObservableSuspense(resource);
 	const t = useT();
+	const isActive = !!category;
 
 	/**
 	 *
 	 */
 	const handleSelect = React.useCallback(
-		(category) => {
-			query.where('categories', { $elemMatch: { id: category.id } });
+		({ value }) => {
+			query.where('categories', { $elemMatch: { id: parseInt(value, 10) } });
 		},
 		[query]
 	);
@@ -33,31 +41,22 @@ const CategoryPill = ({ query, resource }: CategoryPillProps) => {
 	/**
 	 *
 	 */
-	const handleRemove = React.useCallback(() => {
-		query.where('categories', null);
-	}, [query]);
-
-	/**
-	 *
-	 */
-	if (category) {
-		return (
-			<Pill size="small" removable onRemove={handleRemove} icon="folder">
-				{category.name}
-			</Pill>
-		);
-	}
-
-	/**
-	 *
-	 */
-	return openSelect ? (
-		<CategorySelect onBlur={() => setOpenSelect(false)} onSelect={handleSelect} />
-	) : (
-		<Pill icon="folder" size="small" color="lightGrey" onPress={() => setOpenSelect(true)}>
-			{t('Select Category', { _tags: 'core' })}
-		</Pill>
+	return (
+		<Combobox onValueChange={handleSelect}>
+			<ComboboxTriggerPrimitive asChild>
+				<ButtonPill
+					size="xs"
+					leftIcon="folder"
+					variant={isActive ? 'default' : 'muted'}
+					removable={isActive}
+					onRemove={() => query.where('categories', null)}
+				>
+					<ButtonText>{category ? category.name : t('Category', { _tags: 'core' })}</ButtonText>
+				</ButtonPill>
+			</ComboboxTriggerPrimitive>
+			<ComboboxContent>
+				<CategorySearch />
+			</ComboboxContent>
+		</Combobox>
 	);
 };
-
-export default CategoryPill;

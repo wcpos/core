@@ -2,101 +2,147 @@ import * as React from 'react';
 
 import { useNavigation } from '@react-navigation/native';
 
-import Dropdown from '@wcpos/components/src/dropdown';
-import Icon from '@wcpos/components/src/icon';
-import Modal from '@wcpos/components/src/modal';
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from '@wcpos/components/src/alert-dialog';
+import { Checkbox } from '@wcpos/components/src/checkbox';
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from '@wcpos/components/src/dropdown-menu';
+import { HStack } from '@wcpos/components/src/hstack';
+import { Icon } from '@wcpos/components/src/icon';
+import { IconButton } from '@wcpos/components/src/icon-button';
+import { Label } from '@wcpos/components/src/label';
+import { Text } from '@wcpos/components/src/text';
+import { VStack } from '@wcpos/components/src/vstack';
 
-import DeleteDialog from './delete-dialog';
 import { useT } from '../../../../contexts/translations';
+import useDeleteDocument from '../../contexts/use-delete-document';
 import usePullDocument from '../../contexts/use-pull-document';
+import useCustomerNameFormat from '../../hooks/use-customer-name-format';
 
-type Props = {
-	item: import('@wcpos/database').CustomerDocument;
-};
+import type { CellContext } from '@tanstack/react-table';
 
-const Actions = ({ item: customer }: Props) => {
+type CustomerDocument = import('@wcpos/database').CustomerDocument;
+
+/**
+ *
+ */
+export const Actions = ({ row }: CellContext<{ document: CustomerDocument }, 'actions'>) => {
+	const customer = row.original.document;
 	const navigation = useNavigation();
-	const [menuOpened, setMenuOpened] = React.useState(false);
 	const pullDocument = usePullDocument();
 	const [deleteDialogOpened, setDeleteDialogOpened] = React.useState(false);
 	const t = useT();
+	const { format } = useCustomerNameFormat();
+	const [force, setForce] = React.useState(!customer.id);
+	const deleteDocument = useDeleteDocument();
 
 	/**
-	 *
+	 * Handle delete button click
 	 */
-	const items = React.useMemo(() => {
-		const i = [
-			{
-				label: t('Edit', { _tags: 'core' }),
-				action: () => navigation.navigate('EditCustomer', { customerID: customer.uuid }),
-				icon: 'penToSquare',
-			},
-			{ label: '__' },
-			{
-				label: t('Delete', { _tags: 'core' }),
-				action: () => setDeleteDialogOpened(true),
-				icon: 'trash',
-				type: 'critical',
-			},
-		];
-
-		// if customer has an id, then it can be synced
-		// add as second item in menu
-		if (customer.id) {
-			i.splice(1, 0, {
-				label: t('Sync', { _tags: 'core' }),
-				action: () => {
-					if (customer.id) {
-						pullDocument(customer.id, customer.collection);
-					}
-				},
-				icon: 'arrowRotateRight',
-			});
+	const handleDelete = React.useCallback(async () => {
+		try {
+			if (customer.id) {
+				await deleteDocument(customer.id, customer.collection, { force });
+			}
+			await customer.getLatest().remove();
+		} finally {
+			// @TODO - add button loading state and close
+			// setDeleteDialogOpened(false);
 		}
-	}, [customer.collection, customer.id, customer.uuid, navigation, pullDocument, t]);
+	}, [customer, deleteDocument, force]);
 
 	/**
 	 *
 	 */
 	return (
 		<>
-			<Dropdown
-				withinPortal
-				opened={menuOpened}
-				onClose={() => setMenuOpened(false)}
-				placement="bottom-end"
-				items={[
-					{
-						label: t('Edit', { _tags: 'core' }),
-						action: () => navigation.navigate('EditCustomer', { customerID: customer.uuid }),
-						icon: 'penToSquare',
-					},
-					{
-						label: t('Sync', { _tags: 'core' }),
-						action: () => {
-							if (customer.id) {
-								pullDocument(customer.id, customer.collection);
-							}
-						},
-						icon: 'arrowRotateRight',
-					},
-					{ label: '__' },
-					{
-						label: t('Delete', { _tags: 'core' }),
-						action: () => setDeleteDialogOpened(true),
-						icon: 'trash',
-						type: 'critical',
-					},
-				]}
-			>
-				<Icon name="ellipsisVertical" onPress={() => setMenuOpened(true)} />
-			</Dropdown>
-
-			<Modal opened={deleteDialogOpened} onClose={() => setDeleteDialogOpened(false)}>
-				<DeleteDialog customer={customer} setDeleteDialogOpened={setDeleteDialogOpened} />
-			</Modal>
+			<DropdownMenu>
+				<DropdownMenuTrigger asChild>
+					<IconButton name="ellipsisVertical" />
+				</DropdownMenuTrigger>
+				<DropdownMenuContent align="end">
+					<DropdownMenuItem
+						onPress={() => navigation.navigate('EditCustomer', { customerID: customer.uuid })}
+					>
+						<Icon name="penToSquare" />
+						<Text>{t('Edit', { _tags: 'core' })}</Text>
+					</DropdownMenuItem>
+					{customer.id && (
+						<DropdownMenuItem
+							onPress={() => {
+								if (customer.id) {
+									pullDocument(customer.id, customer.collection);
+								}
+							}}
+						>
+							<Icon name="arrowRotateRight" />
+							<Text>{t('Sync', { _tags: 'core' })}</Text>
+						</DropdownMenuItem>
+					)}
+					<DropdownMenuSeparator />
+					<DropdownMenuItem variant="destructive" onPress={() => setDeleteDialogOpened(true)}>
+						<Icon
+							name="trash"
+							className="fill-destructive web:group-focus:fill-accent-foreground"
+						/>
+						<Text>{t('Delete', { _tags: 'core' })}</Text>
+					</DropdownMenuItem>
+				</DropdownMenuContent>
+			</DropdownMenu>
+			<AlertDialog open={deleteDialogOpened} onOpenChange={setDeleteDialogOpened}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>
+							{t('Delete {name}', {
+								_tags: 'core',
+								name: format(customer),
+							})}
+						</AlertDialogTitle>
+						<AlertDialogDescription>
+							<VStack>
+								<Text className="text-destructive">
+									{t(
+										'Are you sure you want to delete this user? Deleting a user is permanent, there is no Trash for WordPress users.',
+										{
+											_tags: 'core',
+										}
+									)}
+								</Text>
+								<HStack>
+									<Checkbox aria-labelledby="confirm" onCheckedChange={setForce} checked={force} />
+									<Label
+										nativeID="confirm"
+										onPress={() => {
+											setForce(!force);
+										}}
+									>
+										{t('Confirm', { _tags: 'core' })}
+									</Label>
+								</HStack>
+							</VStack>
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>{t('Cancel', { _tags: 'core' })}</AlertDialogCancel>
+						<AlertDialogAction variant="destructive" disabled={!force} onPress={handleDelete}>
+							{t('Delete', { _tags: 'core' })}
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</>
 	);
 };
-
-export default Actions;

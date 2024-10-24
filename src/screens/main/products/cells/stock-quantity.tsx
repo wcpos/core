@@ -1,45 +1,50 @@
 import * as React from 'react';
+import { View } from 'react-native';
 
-import { useObservableState } from 'observable-hooks';
+import { useObservableEagerState } from 'observable-hooks';
 
-import Box from '@wcpos/components/src/box';
-import Checkbox from '@wcpos/components/src/checkbox';
-import Text from '@wcpos/components/src/text';
+import { SwitchWithLabel } from '@wcpos/components/src/switch';
+import { VStack } from '@wcpos/components/src/vstack';
 
 import { useT } from '../../../../contexts/translations';
-import NumberInput from '../../components/number-input';
+import { NumberInput } from '../../components/number-input';
+
+import type { CellContext } from '@tanstack/react-table';
 
 type ProductDocument = import('@wcpos/database').ProductDocument;
-
-type Props = {
-	item: ProductDocument;
-	onChange: (product: ProductDocument, data: Record<string, unknown>) => void;
-};
 
 /**
  *
  */
-const StockQuantity = ({ item: product, onChange }: Props) => {
-	const stockQuantity = useObservableState(product.stock_quantity$, product.stock_quantity);
-	const manageStock = useObservableState(product.manage_stock$, product.manage_stock);
+export const StockQuantity = ({
+	row,
+	table,
+}: CellContext<{ document: ProductDocument }, 'stock_quantity'>) => {
+	const product = row.original.document;
+	const stockQuantity = useObservableEagerState(product.stock_quantity$);
+	const manageStock = useObservableEagerState(product.manage_stock$);
 	const t = useT();
 
 	return (
-		<Box space="small">
-			<NumberInput
-				value={String(stockQuantity || 0)}
-				onChange={(stock_quantity) => onChange(product, { stock_quantity })}
-				disabled={!manageStock}
-			/>
-			<Checkbox
+		<VStack>
+			<View className="flex-row justify-center">
+				<NumberInput
+					value={String(stockQuantity || 0)}
+					onChangeText={(stock_quantity) =>
+						table.options.meta.onChange({ document: product, changes: { stock_quantity } })
+					}
+					disabled={!manageStock}
+				/>
+			</View>
+			<SwitchWithLabel
+				nativeID="manage_stock"
 				label={t('Manage', { _tags: 'core' })}
-				value={manageStock}
-				onChange={(manage_stock) => onChange(product, { manage_stock })}
-				type="secondary"
-				size="small"
+				checked={manageStock}
+				onCheckedChange={(manage_stock) =>
+					table.options.meta.onChange({ document: product, changes: { manage_stock } })
+				}
+				size="sm"
 			/>
-		</Box>
+		</VStack>
 	);
 };
-
-export default StockQuantity;

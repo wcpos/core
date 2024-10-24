@@ -1,19 +1,22 @@
 import * as React from 'react';
 
-import { useObservableState } from 'observable-hooks';
+import { useObservableEagerState } from 'observable-hooks';
 
-import Format from '@wcpos/components/src/format';
-import Text from '@wcpos/components/src/text';
+import { FormatAddress } from '@wcpos/components/src/format';
 
-type Props = {
-	item: import('@wcpos/database').OrderDocument;
-	column: import('@wcpos/components/src/table').ColumnProps;
+import type { CellContext } from '@tanstack/react-table';
+
+type OrderDocument = import('@wcpos/database').OrderDocument;
+
+/**
+ *
+ */
+export const Address = ({
+	row,
+	column,
+}: CellContext<{ document: OrderDocument }, 'billing' | 'shipping'>) => {
+	const order = row.original.document;
+	const address = useObservableEagerState(order[`${column.id}$`]);
+
+	return address ? <FormatAddress address={address} showName={false} /> : null;
 };
-
-const Address = ({ item: order, column }: Props) => {
-	const address = useObservableState(order[`${column.key}$`], order[column.key]);
-
-	return address ? <Format.Address address={address} showName={false} /> : <Text.Skeleton />;
-};
-
-export default Address;

@@ -1,28 +1,22 @@
 import * as React from 'react';
-import { View } from 'react-native';
 
-import min from 'lodash/min';
-import { useObservableState } from 'observable-hooks';
+import { useObservableEagerState } from 'observable-hooks';
 
-import Image from '@wcpos/components/src/image';
+import { Image } from '@wcpos/components/src/image';
 
-type AvatarProps = {
-	item: import('@wcpos/database').CustomerDocument;
+import { useImageAttachment } from '../../hooks/use-image-attachment';
+
+import type { CellContext } from '@tanstack/react-table';
+
+type CustomerDocument = import('@wcpos/database').CustomerDocument;
+
+/**
+ *
+ */
+export const Avatar = ({ row }: CellContext<{ document: CustomerDocument }, 'avatar_url'>) => {
+	const customer = row.original.document;
+	const avatarUrl = useObservableEagerState(customer.avatar_url$);
+	const source = useImageAttachment(customer, avatarUrl);
+
+	return <Image source={source} className="w-10 h-10 rounded" recyclingKey={customer.uuid} />;
 };
-
-const Avatar = ({ item: customer, cellWidth }: AvatarProps) => {
-	const avatar_url = useObservableState(customer.avatar_url$, customer.avatar_url);
-	const width = min([cellWidth - 16, 100]);
-
-	return (
-		<Image
-			source={avatar_url}
-			style={{ width, height: width, aspectRatio: 1 }}
-			border="rounded"
-			recyclingKey={customer.uuid}
-			// placeholder={<Img source={require('assets/placeholder.png')} />}
-		/>
-	);
-};
-
-export default Avatar;

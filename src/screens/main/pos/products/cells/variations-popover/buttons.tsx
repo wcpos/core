@@ -1,23 +1,34 @@
 import * as React from 'react';
+import { View } from 'react-native';
 
-import Button from '@wcpos/components/src/button';
+import { Text } from '@wcpos/components/src/text';
+import { ToggleGroup, ToggleGroupItem } from '@wcpos/components/src/toggle-group';
 
 /**
  *
  */
-const VariationButtons = ({ attribute, onSelect, selectedOption }) => {
+const VariationButtons = ({ attribute, onSelect, selected = '' }) => {
+	const [value, setValue] = React.useState<string>(selected);
+	const options = attribute?.options || [];
+
+	/**
+	 *
+	 */
+	const handleSelect = (option: string) => {
+		setValue(option);
+		onSelect?.({ id: attribute.id, name: attribute.name, option });
+	};
+
 	return (
-		<Button.Group>
-			{attribute.options?.map((option) => (
-				<Button
-					key={option}
-					type={option === selectedOption ? 'success' : 'secondary'}
-					onPress={() => onSelect(attribute, option === selectedOption ? null : option)}
-				>
-					{option}
-				</Button>
-			))}
-		</Button.Group>
+		<View className="flex-row">
+			<ToggleGroup value={value} onValueChange={handleSelect} type="single">
+				{options.map((option) => (
+					<ToggleGroupItem key={option} value={option}>
+						<Text>{option}</Text>
+					</ToggleGroupItem>
+				))}
+			</ToggleGroup>
+		</View>
 	);
 };
 

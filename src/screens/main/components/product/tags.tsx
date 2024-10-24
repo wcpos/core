@@ -1,46 +1,44 @@
 import * as React from 'react';
 
-import Pill from '@wcpos/components/src/pill';
-import { useTable } from '@wcpos/components/src/table';
+import { useObservableEagerState } from 'observable-hooks';
 
-type ProductTagsProps = {
-	item: import('@wcpos/database').ProductDocument;
-};
+import { ButtonPill } from '@wcpos/components/src/button';
+import { useDataTable } from '@wcpos/components/src/data-table';
+import { HStack } from '@wcpos/components/src/hstack';
 
-const ProductTags = ({ item: product }: ProductTagsProps) => {
-	const { tags } = product;
-	const query = useTable();
+import type { CellContext } from '@tanstack/react-table';
+
+type ProductDocument = import('@wcpos/database').ProductDocument;
+
+/**
+ *
+ */
+export const ProductTags = ({ row }: CellContext<{ document: ProductDocument }, 'tags'>) => {
+	const product = row.original.document;
+	const tags = useObservableEagerState(product.tags$) || [];
+	const query = useDataTable();
+
+	if (tags.length === 0) {
+		return null;
+	}
 
 	/**
 	 *
 	 */
-	const handleSelectTag = React.useCallback(
-		(tag: any) => {
-			query.where('tags', { $elemMatch: { id: tag.id } });
-		},
-		[query]
+	return (
+		<HStack className="flex-wrap gap-1 w-full">
+			{tags.map((tag: any) => {
+				return (
+					<ButtonPill
+						key={tag.id}
+						size="xs"
+						variant="ghost-secondary"
+						onPress={() => query.where('tags', { $elemMatch: { id: tag.id } })}
+					>
+						{tag.name}
+					</ButtonPill>
+				);
+			})}
+		</HStack>
 	);
-
-	/**
-	 *
-	 */
-	const tagsArray = React.useMemo(() => {
-		if (Array.isArray(tags)) {
-			return tags.map((tag: any) => {
-				return {
-					key: tag.id,
-					label: tag.name,
-					action: () => handleSelectTag(tag),
-				};
-			});
-		}
-		return [];
-	}, [tags, handleSelectTag]);
-
-	/**
-	 *
-	 */
-	return <Pill.Group pills={tagsArray} size="small" color="darkestGrey" />;
 };
-
-export default ProductTags;

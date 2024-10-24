@@ -1,25 +1,32 @@
 import * as React from 'react';
 
-import get from 'lodash/get';
 import { ObservableResource } from 'observable-hooks';
 import { isRxDocument } from 'rxdb';
 import { of } from 'rxjs';
 import { startWith, switchMap, tap } from 'rxjs/operators';
 
-import Box from '@wcpos/components/src/box';
-import Suspense from '@wcpos/components/src/suspense';
+import { HStack } from '@wcpos/components/src/hstack';
+import { Suspense } from '@wcpos/components/src/suspense';
+import type { Query } from '@wcpos/query';
 
-import CategoryPill from './category-pill';
+import { CategoryPill } from './category-pill';
 import FeaturedPill from './featured-pill';
 import OnSalePill from './on-sale-pill';
-import TagPill from './tag-pill';
+import { StockStatusPill } from './stock-status-pill';
+import { TagPill } from './tag-pill';
 import usePullDocument from '../../../contexts/use-pull-document';
 import { useCollection } from '../../../hooks/use-collection';
+
+type ProductCollection = import('@wcpos/database').ProductCollection;
+
+interface Props {
+	query: Query<ProductCollection>;
+}
 
 /**
  *
  */
-const FilterBar = ({ query }) => {
+const FilterBar = ({ query }: Props) => {
 	const { collection: categoryCollection } = useCollection('products/categories');
 	const { collection: tagCollection } = useCollection('products/tags');
 	const pullDocument = usePullDocument();
@@ -29,9 +36,9 @@ const FilterBar = ({ query }) => {
 	 */
 	const selectedCategoryResource = React.useMemo(() => {
 		const selectedCategory$ = query.params$.pipe(
-			startWith(get(query.getParams(), ['selector', 'categories', '$elemMatch', 'id'])),
-			switchMap((query) => {
-				const categoryFilterID = get(query, ['selector', 'categories', '$elemMatch', 'id']);
+			startWith(query.findElementSelectorID('categories')),
+			switchMap(() => {
+				const categoryFilterID = query.findElementSelectorID('categories');
 				if (categoryFilterID) {
 					return categoryCollection.findOne({ selector: { id: categoryFilterID } }).$.pipe(
 						tap((doc) => {
@@ -53,9 +60,9 @@ const FilterBar = ({ query }) => {
 	 */
 	const selectedTagResource = React.useMemo(() => {
 		const selectedTag$ = query.params$.pipe(
-			startWith(get(query.getParams(), ['selector', 'tags', '$elemMatch', 'id'])),
-			switchMap((query) => {
-				const tagFilterID = get(query, ['selector', 'tags', '$elemMatch', 'id']);
+			startWith(query.findElementSelectorID('tags')),
+			switchMap(() => {
+				const tagFilterID = query.findElementSelectorID('tags');
 				if (tagFilterID) {
 					return tagCollection.findOne({ selector: { id: tagFilterID } }).$.pipe(
 						tap((doc) => {
@@ -76,7 +83,8 @@ const FilterBar = ({ query }) => {
 	 *
 	 */
 	return (
-		<Box space="small" horizontal>
+		<HStack className="w-full flex-wrap">
+			<StockStatusPill query={query} />
 			<FeaturedPill query={query} />
 			<OnSalePill query={query} />
 			<Suspense>
@@ -85,7 +93,7 @@ const FilterBar = ({ query }) => {
 			<Suspense>
 				<TagPill query={query} resource={selectedTagResource} />
 			</Suspense>
-		</Box>
+		</HStack>
 	);
 };
 

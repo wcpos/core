@@ -1,17 +1,47 @@
 import * as React from 'react';
 
+import { CellContext } from '@tanstack/react-table';
 import isFinite from 'lodash/isFinite';
-import { useObservableState } from 'observable-hooks';
+import { useObservableEagerState } from 'observable-hooks';
 
-import Text from '@wcpos/components/src/text';
+import { Text } from '@wcpos/components/src/text';
 
-type Props = {
-	item: import('@wcpos/database').ProductDocument;
+import { useT } from '../../../../../contexts/translations';
+import { useNumberFormat } from '../../../hooks/use-number-format';
+
+type ProductDocument = import('@wcpos/database').ProductDocument;
+type ProductVariationDocument = import('@wcpos/database').ProductVariationDocument;
+type Props = CellContext<{ document: ProductDocument | ProductVariationDocument }, string> & {
+	className?: string;
+	withText?: boolean;
 };
 
-export const StockQuantity = ({ item: product }: Props) => {
-	const stockQuantity = useObservableState(product.stock_quantity$, product.stock_quantity);
-	const manageStock = useObservableState(product.manage_stock$, product.manage_stock);
+/**
+ *
+ */
+export const StockQuantity = ({ row, className, withText = false }: Props) => {
+	const product = row.original.document;
+	const stockQuantity = useObservableEagerState(product.stock_quantity$);
+	const manageStock = useObservableEagerState(product.manage_stock$);
+	const { format } = useNumberFormat();
+	const t = useT();
 
-	return manageStock && isFinite(stockQuantity) ? <Text>{stockQuantity}</Text> : null;
+	/**
+	 * Early exit
+	 */
+	if (!manageStock || !isFinite(stockQuantity)) {
+		return null;
+	}
+
+	if (withText) {
+		return (
+			<Text className={className}>
+				{t('{quantity} in stock', { quantity: format(stockQuantity), _tags: 'core' })}
+			</Text>
+		);
+	}
+
+	return manageStock && isFinite(stockQuantity) ? (
+		<Text className={className}>{format(stockQuantity)}</Text>
+	) : null;
 };

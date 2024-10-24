@@ -1,63 +1,95 @@
 import * as React from 'react';
+import { View } from 'react-native';
 
-import Box from '@wcpos/components/src/box';
-import ErrorBoundary from '@wcpos/components/src/error-boundary';
-import Icon from '@wcpos/components/src/icon';
-import Suspense from '@wcpos/components/src/suspense';
-import Tabs from '@wcpos/components/src/tabs';
-import { useQuery } from '@wcpos/query';
+import { Button, ButtonGroupSeparator, ButtonGroup } from '@wcpos/components/src/button';
+import { Card, CardContent, CardHeader } from '@wcpos/components/src/card';
+import { ErrorBoundary } from '@wcpos/components/src/error-boundary';
+import { HStack } from '@wcpos/components/src/hstack';
+import { Icon } from '@wcpos/components/src/icon';
+import { Suspense } from '@wcpos/components/src/suspense';
+import { VStack } from '@wcpos/components/src/vstack';
 
-import Cart from './cart';
-import EmptyCart from './empty-cart';
-import OpenOrderTabs from './tabs';
+import { AddCartItemButtons } from './add-cart-item-buttons';
+import { AddNoteButton } from './buttons/add-note';
+import { OrderMetaButton } from './buttons/order-meta';
+import { PayButton } from './buttons/pay';
+import { SaveButton } from './buttons/save-order';
+import { VoidButton } from './buttons/void';
+import { CartHeader } from './cart-header';
+import { CartTable } from './table';
+import { OpenOrderTabs } from './tabs';
+import { Totals } from './totals';
 import { useCurrentOrder } from '../contexts/current-order';
 
+/**
+ *
+
+ */
 const OpenOrders = ({ isColumn = false }) => {
 	const { currentOrder } = useCurrentOrder();
 
-	/**
-	 *
-	 */
-	const query = useQuery({
-		queryKeys: ['orders', { status: 'pos-open' }],
-		collectionName: 'orders',
-		initialParams: {
-			sortBy: 'date_created_gmt',
-			sortDirection: 'desc',
-			selector: { status: 'pos-open' },
-		},
-	});
+	if (!currentOrder) {
+		throw new Error('Current order is not defined');
+	}
 
 	/**
 	 *
 	 */
 	return (
-		<Box padding="small" paddingLeft={isColumn ? 'none' : 'small'} style={{ height: '100%' }}>
-			<Box style={{ flexGrow: 1, flexShrink: 1, flexBasis: '0%' }}>
-				<ErrorBoundary>
-					{currentOrder.isNew ? (
-						<EmptyCart currentOrder={currentOrder} />
-					) : (
-						<Cart currentOrder={currentOrder} />
-					)}
-				</ErrorBoundary>
-			</Box>
+		<VStack className={`gap-1 p-2 h-full ${isColumn && 'pl-0'}`}>
 			<ErrorBoundary>
-				<Suspense
-					fallback={
-						// Fallback is the 'new cart' button
-						<Tabs.TabBarSkeleton
-							numberOfTabs={1}
-							paddingLeft="none"
-							paddingBottom="none"
-							buttonText={<Icon name="plus" type="inverse" />}
-						/>
-					}
-				>
-					<OpenOrderTabs query={query} />
+				{currentOrder.isNew ? (
+					<Card className="flex-1">
+						<CardHeader className="p-2 bg-input">
+							<ErrorBoundary>
+								<CartHeader />
+							</ErrorBoundary>
+						</CardHeader>
+						<CardContent className="flex-1 p-0">
+							<AddCartItemButtons />
+						</CardContent>
+					</Card>
+				) : (
+					<Card className="flex-1">
+						<CardHeader className="p-2 bg-input">
+							<ErrorBoundary>
+								<CartHeader />
+							</ErrorBoundary>
+						</CardHeader>
+						<CardContent className="flex-1 p-0">
+							<View className="flex-1">
+								<ErrorBoundary>
+									<CartTable />
+								</ErrorBoundary>
+							</View>
+							<AddCartItemButtons />
+							<ErrorBoundary>
+								<Totals />
+							</ErrorBoundary>
+							<HStack className="p-2 bg-muted [&>*]:flex-1">
+								<ErrorBoundary>
+									<AddNoteButton />
+									<OrderMetaButton />
+									<SaveButton />
+								</ErrorBoundary>
+							</HStack>
+							<HStack className="gap-0 w-full">
+								<ErrorBoundary>
+									<VoidButton />
+									<ButtonGroupSeparator className="bg-input" />
+									<PayButton />
+								</ErrorBoundary>
+							</HStack>
+						</CardContent>
+					</Card>
+				)}
+			</ErrorBoundary>
+			<ErrorBoundary>
+				<Suspense>
+					<OpenOrderTabs />
 				</Suspense>
 			</ErrorBoundary>
-		</Box>
+		</VStack>
 	);
 };
 

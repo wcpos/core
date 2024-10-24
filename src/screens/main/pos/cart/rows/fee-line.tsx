@@ -1,60 +1,36 @@
 import * as React from 'react';
 
 import get from 'lodash/get';
-import { useObservable, useSubscription } from 'observable-hooks';
-import { combineLatest } from 'rxjs';
-import { debounceTime, distinctUntilChanged, map } from 'rxjs/operators';
 
-import ErrorBoundary from '@wcpos/components/src/error-boundary';
-import Suspense from '@wcpos/components/src/suspense';
+import { ErrorBoundary } from '@wcpos/components/src/error-boundary';
+import { Suspense } from '@wcpos/components/src/suspense';
 import Table, { CellRenderer, TableProps } from '@wcpos/components/src/table';
-import Text from '@wcpos/components/src/text';
+import { Text } from '@wcpos/components/src/text';
 
-import { useTaxCalculation } from './use-tax-calculation';
 import { Actions } from '../cells/actions';
+import { FeeAndShippingTotal } from '../cells/fee-and-shipping-total';
 import { FeeName } from '../cells/fee-name';
-import { FeeTotal } from '../cells/fee-total';
+import { FeePrice } from '../cells/fee-price';
 
-type FeeLineDocument = import('@wcpos/database').FeeLineDocument;
-type RenderItem = TableProps<FeeLineDocument>['renderItem'];
+type FeeLine = import('@wcpos/database').OrderDocument['fee_lines'][number];
+type RenderItem = TableProps<FeeLine>['renderItem'];
 
 const cells = {
 	actions: Actions,
 	name: FeeName,
-	price: () => null,
+	price: FeePrice,
 	subtotal: () => null,
-	total: FeeTotal,
+	total: FeeAndShippingTotal,
 };
-
-/**
- * When rxdb properties are updated, they emit for each, eg: total and subtotal
- * This triggers unnecessary calculations, so we debounce the updates
- */
-const DEBOUNCE_TIME_MS = 10;
 
 /**
  *
  */
-export const FeeLineRow: RenderItem = ({ item, index, target }) => {
-	// const { calculateLineItemTaxes } = useTaxCalculation(item);
-
-	// /**
-	//  *
-	//  */
-	// const feeLine$ = useObservable(() =>
-	// 	combineLatest([item.total$, item.tax_class$, item.tax_status$]).pipe(
-	// 		map(([total, taxClass, taxStatus]) => ({ total, taxClass, taxStatus })),
-	// 		distinctUntilChanged((prev, next) => JSON.stringify(prev) === JSON.stringify(next)),
-	// 		debounceTime(DEBOUNCE_TIME_MS)
-	// 	)
-	// );
-
-	// useSubscription(feeLine$, calculateLineItemTaxes);
-
+export const FeeLineRow = ({ uuid, item, index, target }) => {
 	/**
 	 *
 	 */
-	const cellRenderer = React.useCallback<CellRenderer<FeeLineDocument>>(
+	const cellRenderer = React.useCallback<CellRenderer<FeeLine>>(
 		({ item, column, index, cellWidth }) => {
 			const Cell = get(cells, column.key);
 
@@ -62,7 +38,14 @@ export const FeeLineRow: RenderItem = ({ item, index, target }) => {
 				return (
 					<ErrorBoundary>
 						<Suspense>
-							<Cell item={item} column={column} index={index} cellWidth={cellWidth} />
+							<Cell
+								type="fee_lines"
+								uuid={uuid}
+								item={item}
+								column={column}
+								index={index}
+								cellWidth={cellWidth}
+							/>
 						</Suspense>
 					</ErrorBoundary>
 				);
@@ -74,7 +57,7 @@ export const FeeLineRow: RenderItem = ({ item, index, target }) => {
 
 			return null;
 		},
-		[]
+		[uuid]
 	);
 
 	return <Table.Row item={item} index={index} target={target} cellRenderer={cellRenderer} />;
