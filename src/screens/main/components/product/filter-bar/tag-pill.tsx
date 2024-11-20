@@ -1,30 +1,44 @@
 import * as React from 'react';
 
-import { ObservableResource, useObservableSuspense } from 'observable-hooks';
+import toNumber from 'lodash/toNumber';
+import { useObservableSuspense, ObservableResource } from 'observable-hooks';
 
-import Pill from '@wcpos/components/src/pill';
+import { ButtonPill, ButtonText } from '@wcpos/components/src/button';
+import {
+	Combobox,
+	ComboboxContent,
+	ComboboxTriggerPrimitive,
+} from '@wcpos/components/src/combobox';
+import type { Query } from '@wcpos/query';
 
 import { useT } from '../../../../../contexts/translations';
-import TagSelect from '../tag-select';
+import { TagSearch } from '../tag-select';
 
-interface TagPillProps {
+type ProductCollection = import('@wcpos/database').ProductCollection;
+
+interface Props {
+	query: Query<ProductCollection>;
 	resource: ObservableResource<import('@wcpos/database').ProductTagDocument>;
+	selectedID?: number;
 }
 
 /**
  *
  */
-const TagPill = ({ query, resource }: TagPillProps) => {
-	const [openSelect, setOpenSelect] = React.useState(false);
+export const TagPill = ({ query, resource, selectedID }: Props) => {
 	const tag = useObservableSuspense(resource);
 	const t = useT();
+	const isActive = !!selectedID;
 
 	/**
-	 *
+	 * @NOTE - we need to convert the value to a number because the value is a string
 	 */
 	const handleSelect = React.useCallback(
-		(tag) => {
-			query.where('tags', { $elemMatch: { id: tag.id } });
+		({ value }) => {
+			query
+				.where('tags')
+				.elemMatch({ id: toNumber(value) })
+				.exec();
 		},
 		[query]
 	);
@@ -32,31 +46,26 @@ const TagPill = ({ query, resource }: TagPillProps) => {
 	/**
 	 *
 	 */
-	const handleRemove = React.useCallback(() => {
-		query.where('tags', null);
-	}, [query]);
-
-	/**
-	 *
-	 */
-	if (tag) {
-		return (
-			<Pill size="small" removable onRemove={handleRemove} icon="tag">
-				{tag.name}
-			</Pill>
-		);
-	}
-
-	/**
-	 *
-	 */
-	return openSelect ? (
-		<TagSelect onBlur={() => setOpenSelect(false)} onSelect={handleSelect} />
-	) : (
-		<Pill icon="tag" size="small" color="lightGrey" onPress={() => setOpenSelect(true)}>
-			{t('Select Tag', { _tags: 'core' })}
-		</Pill>
+	return (
+		<Combobox onValueChange={handleSelect}>
+			<ComboboxTriggerPrimitive asChild>
+				<ButtonPill
+					size="xs"
+					leftIcon="folder"
+					variant={isActive ? 'default' : 'muted'}
+					removable={isActive}
+					onRemove={() => query.where('tags').removeElemMatch('tags', { id: tag?.id }).exec()}
+				>
+					<ButtonText>
+						{isActive
+							? tag?.name || t('ID: {id}', { id: selectedID, _tags: 'core' })
+							: t('Tag', { _tags: 'core' })}
+					</ButtonText>
+				</ButtonPill>
+			</ComboboxTriggerPrimitive>
+			<ComboboxContent>
+				<TagSearch />
+			</ComboboxContent>
+		</Combobox>
 	);
 };
-
-export default TagPill;

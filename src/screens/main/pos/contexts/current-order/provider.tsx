@@ -3,12 +3,13 @@ import * as React from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { ObservableResource, useObservableSuspense } from 'observable-hooks';
 
-import useTaxLocation from '../../use-tax-location';
+import { useNewOrder } from './use-new-order';
 
 type OrderDocument = import('@wcpos/database').OrderDocument;
 
 interface CurrentOrderContextProps {
 	currentOrder: OrderDocument;
+	openOrders: { id: string; document: OrderDocument }[];
 	setCurrentOrderID: (id: string) => void;
 }
 
@@ -16,8 +17,8 @@ export const CurrentOrderContext = React.createContext<CurrentOrderContextProps>
 
 interface CurrentOrderContextProviderProps {
 	children: React.ReactNode;
-	resource: ObservableResource<OrderDocument>;
-	taxQuery: any;
+	resource: ObservableResource<{ id: string; document: OrderDocument }[]>;
+	currentOrderUUID?: string;
 }
 
 /**
@@ -26,19 +27,15 @@ interface CurrentOrderContextProviderProps {
 export const CurrentOrderProvider = ({
 	children,
 	resource,
-	taxQuery,
+	currentOrderUUID,
 }: CurrentOrderContextProviderProps) => {
-	const currentOrder = useObservableSuspense(resource);
+	const { newOrder } = useNewOrder();
+	const openOrders = useObservableSuspense(resource);
+	let currentOrder = openOrders.find((order) => order.id === currentOrderUUID)?.document;
+	if (!currentOrder) {
+		currentOrder = newOrder;
+	}
 	const navigation = useNavigation();
-	const location = useTaxLocation(currentOrder);
-
-	/**
-	 * The tax rate can depend on the current order's location
-	 * So we need to re-query the tax rate when the order changes
-	 */
-	React.useEffect(() => {
-		taxQuery.search(location);
-	}, [location, taxQuery]);
 
 	/**
 	 *
@@ -57,6 +54,7 @@ export const CurrentOrderProvider = ({
 		<CurrentOrderContext.Provider
 			value={{
 				currentOrder,
+				openOrders,
 				setCurrentOrderID,
 			}}
 		>

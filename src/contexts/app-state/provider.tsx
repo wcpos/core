@@ -1,7 +1,9 @@
 import * as React from 'react';
-import { Linking } from 'react-native';
 
-import { useObservableSuspense } from 'observable-hooks';
+import { useObservableRef, ObservableResource } from 'observable-hooks';
+import { isRxDatabase } from 'rxdb';
+import { from } from 'rxjs';
+import { distinctUntilChanged, filter } from 'rxjs/operators';
 
 import type {
 	UserDatabase,
@@ -10,9 +12,11 @@ import type {
 	WPCredentialsDocument,
 	StoreDocument,
 	StoreDatabase,
+	SyncDatabase,
 } from '@wcpos/database';
 
-import { initialProps, isWebApp, resource, initialPropsSubject } from '../../hydrate-data';
+import { hydrateInitialProps, isWebApp } from './hydrate';
+import { useUserDB } from './use-user-db';
 
 export interface HydratedData {
 	userDB: UserDatabase;
@@ -21,10 +25,12 @@ export interface HydratedData {
 	wpCredentials: WPCredentialsDocument;
 	store: StoreDocument;
 	storeDB: StoreDatabase;
+	fastStoreDB: SyncDatabase;
+	extraData: any;
 }
 
 export interface AppState extends HydratedData {
-	initialProps: import('../../types').InitialProps;
+	initialProps: Readonly<Record<string, unknown>>;
 	isWebApp: boolean;
 	login: ({
 		siteID,
@@ -43,7 +49,7 @@ export const AppStateContext = React.createContext<AppState | undefined>(undefin
 
 interface AppStateProviderProps {
 	children: React.ReactNode;
-	// initialProps?: import('../../types').InitialProps;
+	initialProps: Readonly<Record<string, unknown>>;
 	// isWebApp: boolean;
 	// resource: ObservableResource<HydratedData>;
 }
@@ -51,96 +57,125 @@ interface AppStateProviderProps {
 /**
  *
  */
-export const AppStateProvider = ({ children }: AppStateProviderProps) => {
-	const { userDB, user, site, wpCredentials, store, storeDB } = useObservableSuspense(resource);
+export const AppStateProvider = ({ children, initialProps }: AppStateProviderProps) => {
+	const {
+		userDB,
+		appState,
+		translationsState,
+		user,
+		site,
+		wpCredentials,
+		store,
+		storeDB,
+		fastStoreDB,
+		extraData,
+	} = useUserDB();
+	const [isReadyRef, isReady$] = useObservableRef(false);
 
 	/**
 	 *
 	 */
 	const login = React.useCallback(
 		async ({ siteID, wpCredentialsID, storeID }) => {
-			return userDB.upsertLocal('current', {
-				userID: user.uuid,
+			await appState.set('current', () => ({
 				siteID,
 				wpCredentialsID,
 				storeID,
-			});
+			}));
 		},
-		[user, userDB]
+		[appState]
 	);
 
 	/**
 	 *
 	 */
 	const logout = React.useCallback(async () => {
+		await appState.set('current', () => null);
+
 		if (isWebApp) {
-			Linking.openURL(initialProps.logout_url);
-			return;
+			window.location.href = initialProps.logout_url;
 		}
-		return userDB.upsertLocal('current', {
-			userID: user.uuid,
-			siteID: null,
-			wpCredentialsID: null,
-			storeID: null,
-		});
-	}, [user?.uuid, userDB]);
+	}, [appState, initialProps.logout_url]);
 
 	/**
 	 *
 	 */
 	const switchStore = React.useCallback(
-		async (store) => {
-			if (isWebApp) {
-				/**
-				 * This is super messy, I need to refactor the web store switching
-				 * ... but it works for now
-				 */
-				initialPropsSubject.next({ ...initialProps, store_id: store.id });
-				return;
-			}
-			return login({
-				siteID: site.uuid,
-				wpCredentialsID: wpCredentials.uuid,
-				storeID: store.localID,
-			});
+		async (store: StoreDocument) => {
+			await appState.set('current', (v) => ({ ...v, storeID: store.localID }));
 		},
-		[login, site?.uuid, wpCredentials?.uuid]
+		[appState]
 	);
+
+	/**
+	 * Wait for bootstrap to finish
+	 *
+	 * @TODO - there's got to be a way to combine hydration and isReady checks
+	 */
+	const hydrationResource = React.useMemo(
+		() =>
+			new ObservableResource(from(hydrateInitialProps({ userDB, appState, user, initialProps }))),
+		[
+			// no dependencies, only run once on mount
+		]
+	);
+
+	if (isWebApp) {
+		isReadyRef.current = isRxDatabase(storeDB);
+	} else {
+		isReadyRef.current = true;
+	}
 
 	/**
 	 *
 	 */
-	React.useEffect(() => {
-		// Perform any required setup here...
-		return () => {
-			// Perform any cleanup here...
-			if (storeDB) {
-				// free up memory is the storeDB changes
-				storeDB.destroy();
-			}
+	const value = React.useMemo(() => {
+		return {
+			userDB,
+			user,
+			site,
+			wpCredentials,
+			store,
+			storeDB,
+			fastStoreDB,
+			extraData,
+			translationsState,
+			initialProps, // pass through initialProps
+			isWebApp,
+			login,
+			logout,
+			switchStore,
+			isReadyResource: new ObservableResource(
+				isReady$.pipe(
+					filter((v) => v),
+					distinctUntilChanged()
+				)
+			),
+			hydrationResource,
 		};
-	}, [storeDB]);
+	}, [
+		userDB,
+		user,
+		site,
+		wpCredentials,
+		store,
+		storeDB,
+		fastStoreDB,
+		extraData,
+		translationsState,
+		initialProps,
+		login,
+		logout,
+		switchStore,
+		isReady$,
+		hydrationResource,
+	]);
 
 	/**
 	 *
 	 */
 	return (
-		<AppStateContext.Provider
-			key={store?.localID}
-			value={{
-				initialProps, // pass down initialProps
-				isWebApp,
-				userDB,
-				user,
-				site,
-				wpCredentials,
-				store,
-				storeDB,
-				login,
-				logout,
-				switchStore,
-			}}
-		>
+		<AppStateContext.Provider key={store?.localID} value={value}>
 			{children}
 		</AppStateContext.Provider>
 	);

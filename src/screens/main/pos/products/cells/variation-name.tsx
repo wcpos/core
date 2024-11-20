@@ -1,52 +1,34 @@
 import * as React from 'react';
-import { View } from 'react-native';
 
-import find from 'lodash/find';
+import { CellContext } from '@tanstack/react-table';
+import { decode } from 'html-entities';
 
-import Box from '@wcpos/components/src/box';
-import Text from '@wcpos/components/src/text';
+import { Text } from '@wcpos/components/src/text';
+import { VStack } from '@wcpos/components/src/vstack';
 
-import StockQuantity from '../../../components/product/stock-quantity';
+import { StockQuantity } from './stock-quantity';
 
-interface Props {
-	item: import('@wcpos/database').ProductVariationDocument;
-	column: import('@wcpos/components/src/table').ColumnProps<
-		import('@wcpos/database').ProductVariationDocument
-	>;
-	expandVariations?: () => void;
-}
+type ProductVariationDocument = import('@wcpos/database').ProductVariationDocument;
 
-export const ProductVariationName = ({ item: variation, column }: Props) => {
-	const { display } = column;
-
-	/**
-	 *
-	 */
-	const show = React.useCallback(
-		(key: string): boolean => {
-			const d = find(display, { key });
-			return !!(d && d.show);
-		},
-		[display]
-	);
+/**
+ *
+ */
+export const ProductVariationName = ({
+	row,
+	column,
+}: CellContext<{ document: ProductVariationDocument }, 'name'>) => {
+	const variation = row.original.document;
+	const { show } = column.columnDef.meta;
 
 	/**
-	 *
+	 * Sometimes the product name from WooCommerce is encoded in html entities
 	 */
-
 	return (
-		<Box space="xSmall" style={{ width: '100%' }}>
-			<View>
-				{variation.attributes.map((attr: any) => (
-					<Text key={`${attr.name}-${attr.id}`}>
-						<Text type="secondary">{`${attr.name}: `}</Text>
-						<Text weight="bold">{attr.option}</Text>
-					</Text>
-				))}
-			</View>
-			{show('sku') && <Text size="small">{variation.sku}</Text>}
-			{show('barcode') && <Text size="small">{variation.barcode}</Text>}
-			{show('stock_quantity') && <StockQuantity product={variation} size="small" />}
-		</Box>
+		<VStack space="xs">
+			<Text className="font-bold">{decode(variation.name)}</Text>
+			{show('sku') && <Text className="text-sm">{variation.sku}</Text>}
+			{show('barcode') && <Text className="text-sm">{variation.barcode}</Text>}
+			{show('stock_quantity') && <StockQuantity row={row} className="text-sm" withText />}
+		</VStack>
 	);
 };

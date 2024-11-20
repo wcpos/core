@@ -1,56 +1,42 @@
 import * as React from 'react';
 
-import find from 'lodash/find';
-import { useObservableState } from 'observable-hooks';
+import { useObservableEagerState } from 'observable-hooks';
 
-import Box from '@wcpos/components/src/box';
-import { EdittableText } from '@wcpos/components/src/edittable-text';
-import Text from '@wcpos/components/src/text';
+import { Text } from '@wcpos/components/src/text';
+import { VStack } from '@wcpos/components/src/vstack';
 
-import ProductAttributes, { PlainAttributes } from '../../components/product/attributes';
+import { EditableName } from '../../components/editable-name';
+import { PlainAttributes, ProductAttributes } from '../../components/product/attributes';
 import GroupedNames from '../../components/product/grouped-names';
 
-type ProductDocument = import('@wcpos/database').ProductDocument;
+import type { CellContext } from '@tanstack/react-table';
 
-type Props = {
-	item: ProductDocument;
-	column: import('@wcpos/components/src/table').ColumnProps<ProductDocument>;
-	onChange: (product: ProductDocument, data: Record<string, unknown>) => void;
-};
+type ProductDocument = import('@wcpos/database').ProductDocument;
 
 /**
  *
  */
-const Name = ({ item: product, column, onChange, toggleVariations }: Props) => {
-	const name = useObservableState(product.name$, product.name);
-	const { display } = column;
-
-	/**
-	 *
-	 */
-	const show = React.useCallback(
-		(key: string): boolean => {
-			const d = find(display, { key });
-			return !!(d && d.show);
-		},
-		[display]
-	);
+export const ProductName = (props: CellContext<{ document: ProductDocument }, 'name'>) => {
+	const product = props.row.original.document;
+	const show = props.column.columnDef.meta.show;
+	const name = useObservableEagerState(product.name$);
 
 	/**
 	 *
 	 */
 	return (
-		<Box space="xSmall" style={{ width: '100%' }}>
-			<EdittableText weight="bold" onChange={(name: string) => onChange(product, { name })}>
-				{name}
-			</EdittableText>
-			{show('sku') && <Text size="small">{product.sku}</Text>}
-			{show('barcode') && <Text size="small">{product.barcode}</Text>}
-			{show('attributes') && <PlainAttributes product={product} />}
-			{product.type === 'variable' && <ProductAttributes product={product} />}
-			{product.type === 'grouped' && <GroupedNames parent={product} />}
-		</Box>
+		<VStack space="xs" className="w-full">
+			<EditableName
+				value={name}
+				onChangeText={(name) =>
+					props.table.options.meta.onChange({ document: product, changes: { name } })
+				}
+			/>
+			{show('sku') && <Text className="text-sm">{product.sku}</Text>}
+			{show('barcode') && <Text className="text-sm">{product.barcode}</Text>}
+			{show('attributes') && <PlainAttributes {...props} />}
+			{product.type === 'variable' && <ProductAttributes {...props} />}
+			{product.type === 'grouped' && <GroupedNames {...props} />}
+		</VStack>
 	);
 };
-
-export default Name;

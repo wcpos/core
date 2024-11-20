@@ -1,28 +1,23 @@
 import * as React from 'react';
 
-import { useObservableState } from 'observable-hooks';
+import { useObservableEagerState } from 'observable-hooks';
 
 import { useAppState } from '../../../contexts/app-state';
 
 /**
  *
  */
-const useBaseTaxLocation = () => {
+export const useBaseTaxLocation = () => {
 	const { store } = useAppState();
-	const storeCity = useObservableState(store.store_city$, store?.store_city);
-	const storeCountry = useObservableState(store.default_country$, store?.default_country);
-	const storePostcode = useObservableState(store.store_postcode$, store?.store_postcode);
-	const [country, state] = (storeCountry || '').split(':');
+	const country = useObservableEagerState(store.store_country$);
+	const state = useObservableEagerState(store.store_state$);
+	const city = useObservableEagerState(store.store_city$);
+	const postcode = useObservableEagerState(store.store_postcode$);
 
-	return React.useMemo(
-		() => ({
-			city: storeCity,
-			country,
-			state,
-			postcode: storePostcode,
-		}),
-		[country, state, storeCity, storePostcode]
-	);
+	return {
+		country,
+		state,
+		city,
+		postcode,
+	};
 };
-
-export default useBaseTaxLocation;

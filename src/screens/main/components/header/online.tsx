@@ -1,12 +1,14 @@
 import * as React from 'react';
 
-import Icon from '@wcpos/components/src/icon';
+import { Icon } from '@wcpos/components/src/icon';
+import { Text } from '@wcpos/components/src/text';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@wcpos/components/src/tooltip';
 import useOnlineStatus from '@wcpos/hooks/src/use-online-status';
 
 import { useT } from '../../../../contexts/translations';
 
 type OnlineState = {
-	type: 'success' | 'warning' | 'critical';
+	type: 'success' | 'warning' | 'destructive';
 	tooltip: string;
 };
 
@@ -17,7 +19,7 @@ const Online = () => {
 	const state: OnlineState = React.useMemo(() => {
 		if (!isConnected) {
 			return {
-				type: 'critical',
+				type: 'destructive',
 				tooltip: t('No internet connection', { _tags: 'core' }),
 			};
 		}
@@ -39,13 +41,14 @@ const Online = () => {
 	}
 
 	return (
-		<Icon
-			name="circle"
-			size="small"
-			type={state.type}
-			tooltip={state.tooltip}
-			tooltipPlacement="bottom"
-		/>
+		<Tooltip>
+			<TooltipTrigger>
+				<Icon name="circle" className={`text-${state.type}`} />
+			</TooltipTrigger>
+			<TooltipContent side="bottom">
+				<Text>{state.tooltip}</Text>
+			</TooltipContent>
+		</Tooltip>
 	);
 };
 

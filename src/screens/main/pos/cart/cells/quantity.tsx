@@ -1,42 +1,43 @@
 import * as React from 'react';
 
-import NumberInput from '../../../components/number-input';
-import { useCurrentOrder } from '../../contexts/current-order';
+import { Text } from '@wcpos/components/src/text';
+import { VStack } from '@wcpos/components/src/vstack';
 
+import { useT } from '../../../../../contexts/translations';
+import { NumberInput } from '../../../components/number-input';
+import { useUpdateLineItem } from '../../hooks/use-update-line-item';
+
+import type { CellContext } from '@tanstack/react-table';
+
+type LineItem = import('@wcpos/database').OrderDocument['line_items'][number];
 interface Props {
-	item: import('@wcpos/database').LineItemDocument;
+	uuid: string;
+	item: LineItem;
+	type: 'line_items';
 }
 
-export const Quantity = ({ item }: Props) => {
-	const { currentOrder } = useCurrentOrder();
+/**
+ *
+ */
+export const Quantity = ({ row, column }: CellContext<Props, 'quantity'>) => {
+	const { item, uuid } = row.original;
+	const { updateLineItem, splitLineItem } = useUpdateLineItem();
+	const t = useT();
 
 	/**
 	 *
 	 */
-	const updateQuantity = React.useCallback(
-		async (newQuantity: string) => {
-			currentOrder.incrementalModify((order) => {
-				const updatedLineItems = order.line_items.map((li) => {
-					const uuidMetaData = li.meta_data.find((meta) => meta.key === '_woocommerce_pos_uuid');
-					if (uuidMetaData && uuidMetaData.value === item.uuid) {
-						return {
-							...li,
-							quantity: newQuantity,
-							subtotal: String((parseFloat(li.subtotal) / li.quantity) * Number(newQuantity)),
-							total: String((parseFloat(li.total) / li.quantity) * Number(newQuantity)),
-						};
-					}
-					return li;
-				});
-
-				return { ...order, line_items: updatedLineItems };
-			});
-		},
-		[currentOrder, item.uuid]
+	return (
+		<VStack className="justify-center items-center gap-1">
+			<NumberInput
+				value={item.quantity}
+				onChangeText={(quantity) => updateLineItem(uuid, { quantity })}
+			/>
+			{column.columnDef.meta.show('split') && item.quantity > 1 && (
+				<Text variant="link" className="text-sm text-primary" onPress={() => splitLineItem(uuid)}>
+					{t('Split', { _tags: 'core', _context: 'Split quantity' })}
+				</Text>
+			)}
+		</VStack>
 	);
-
-	/**
-	 *
-	 */
-	return <NumberInput value={String(item.quantity)} onChange={updateQuantity} />;
 };

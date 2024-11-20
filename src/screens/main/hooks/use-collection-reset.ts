@@ -5,21 +5,22 @@ import { useAppState } from '../../../contexts/app-state';
 import type { CollectionKey } from './use-collection';
 
 /**
- * Reset collection map
- * - Some collections are linked, so we need to reset them all
+ *
  */
-const resetCollectionNames = {
-	products: ['variations', 'products'],
-	orders: ['line_items', 'fee_lines', 'shipping_lines', 'orders'],
-};
-
 export const useCollectionReset = (key: CollectionKey) => {
-	const { storeDB } = useAppState();
+	const { storeDB, fastStoreDB } = useAppState();
 
-	const clear = React.useCallback(() => {
-		const keys = resetCollectionNames[key] || [key];
-		storeDB.reset(keys);
-	}, [storeDB, key]);
+	/**
+	 * Special case for products, we need to remove the variations collection first
+	 */
+	const clear = React.useCallback(async () => {
+		if (key === 'products') {
+			await fastStoreDB.collections['variations'].remove();
+			await storeDB.collections['variations'].remove();
+		}
+		await fastStoreDB.collections[key].remove();
+		await storeDB.collections[key].remove();
+	}, [fastStoreDB, key, storeDB]);
 
 	return { clear };
 };

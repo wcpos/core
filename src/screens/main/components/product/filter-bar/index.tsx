@@ -1,91 +1,109 @@
 import * as React from 'react';
 
-import get from 'lodash/get';
-import { ObservableResource } from 'observable-hooks';
+import { ObservableResource, useObservable, useObservableEagerState } from 'observable-hooks';
 import { isRxDocument } from 'rxdb';
 import { of } from 'rxjs';
-import { startWith, switchMap, tap } from 'rxjs/operators';
+import { startWith, switchMap, tap, map } from 'rxjs/operators';
 
-import Box from '@wcpos/components/src/box';
-import Suspense from '@wcpos/components/src/suspense';
+import { HStack } from '@wcpos/components/src/hstack';
+import { Suspense } from '@wcpos/components/src/suspense';
+import type { Query } from '@wcpos/query';
 
-import CategoryPill from './category-pill';
+import { CategoryPill } from './category-pill';
 import FeaturedPill from './featured-pill';
 import OnSalePill from './on-sale-pill';
-import TagPill from './tag-pill';
+import { StockStatusPill } from './stock-status-pill';
+import { TagPill } from './tag-pill';
 import usePullDocument from '../../../contexts/use-pull-document';
 import { useCollection } from '../../../hooks/use-collection';
+
+type ProductCollection = import('@wcpos/database').ProductCollection;
+
+interface Props {
+	query: Query<ProductCollection>;
+}
 
 /**
  *
  */
-const FilterBar = ({ query }) => {
+const FilterBar = ({ query }: Props) => {
 	const { collection: categoryCollection } = useCollection('products/categories');
 	const { collection: tagCollection } = useCollection('products/tags');
 	const pullDocument = usePullDocument();
+	const selectedCategoryID = useObservableEagerState(
+		query.rxQuery$.pipe(map(() => query.getElemMatchId('categories')))
+	);
+	const selectedTagID = useObservableEagerState(
+		query.rxQuery$.pipe(map(() => query.getElemMatchId('tags')))
+	);
 
-	/**
-	 * TODO - this is a bit of a hack, but it works for now.
-	 */
-	const selectedCategoryResource = React.useMemo(() => {
-		const selectedCategory$ = query.params$.pipe(
-			startWith(get(query.getParams(), ['selector', 'categories', '$elemMatch', 'id'])),
-			switchMap((query) => {
-				const categoryFilterID = get(query, ['selector', 'categories', '$elemMatch', 'id']);
-				if (categoryFilterID) {
-					return categoryCollection.findOne({ selector: { id: categoryFilterID } }).$.pipe(
+	const selectedCategory$ = useObservable(
+		(inputs$) =>
+			inputs$.pipe(
+				switchMap(([id]) => {
+					if (!id) {
+						return of(undefined);
+					}
+					return categoryCollection.findOne({ selector: { id } }).$.pipe(
 						tap((doc) => {
 							if (!isRxDocument(doc)) {
-								pullDocument(categoryFilterID, categoryCollection);
+								pullDocument(id, categoryCollection);
 							}
 						})
 					);
-				}
-				return of(undefined);
-			})
-		);
+				})
+			),
+		[selectedCategoryID]
+	);
 
-		return new ObservableResource(selectedCategory$);
-	}, [categoryCollection, pullDocument, query]);
+	const selectedCategoryResource = React.useMemo(
+		() => new ObservableResource(selectedCategory$),
+		[selectedCategory$]
+	);
 
-	/**
-	 *
-	 */
-	const selectedTagResource = React.useMemo(() => {
-		const selectedTag$ = query.params$.pipe(
-			startWith(get(query.getParams(), ['selector', 'tags', '$elemMatch', 'id'])),
-			switchMap((query) => {
-				const tagFilterID = get(query, ['selector', 'tags', '$elemMatch', 'id']);
-				if (tagFilterID) {
-					return tagCollection.findOne({ selector: { id: tagFilterID } }).$.pipe(
+	const selectedTag$ = useObservable(
+		(inputs$) =>
+			inputs$.pipe(
+				switchMap(([id]) => {
+					if (!id) {
+						return of(undefined);
+					}
+					return tagCollection.findOne({ selector: { id } }).$.pipe(
 						tap((doc) => {
 							if (!isRxDocument(doc)) {
-								pullDocument(tagFilterID, tagCollection);
+								pullDocument(id, tagCollection);
 							}
 						})
 					);
-				}
-				return of(undefined);
-			})
-		);
+				})
+			),
+		[selectedTagID]
+	);
 
-		return new ObservableResource(selectedTag$);
-	}, [pullDocument, query, tagCollection]);
+	const selectedTagResource = React.useMemo(
+		() => new ObservableResource(selectedTag$),
+		[selectedTag$]
+	);
 
 	/**
 	 *
 	 */
 	return (
-		<Box space="small" horizontal>
+		<HStack className="w-full flex-wrap">
+			<StockStatusPill query={query} />
 			<FeaturedPill query={query} />
 			<OnSalePill query={query} />
 			<Suspense>
-				<CategoryPill query={query} resource={selectedCategoryResource} />
+				<CategoryPill
+					query={query}
+					resource={selectedCategoryResource}
+					selectedID={selectedCategoryID}
+				/>
 			</Suspense>
 			<Suspense>
-				<TagPill query={query} resource={selectedTagResource} />
+				<TagPill query={query} resource={selectedTagResource} selectedID={selectedTagID} />
 			</Suspense>
-		</Box>
+		</HStack>
 	);
 };
 

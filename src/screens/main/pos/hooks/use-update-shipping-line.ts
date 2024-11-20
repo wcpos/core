@@ -1,57 +1,87 @@
 import * as React from 'react';
 
+import { useCalculateShippingLineTaxAndTotals } from './use-calculate-shipping-line-tax-and-totals';
+import { useShippingLineData } from './use-shipping-line-data';
+import { updatePosDataMeta } from './utils';
+import { useLocalMutation } from '../../hooks/mutations/use-local-mutation';
 import { useCurrentOrder } from '../contexts/current-order';
 
-type ShippingLine = import('@wcpos/database').OrderDocument['shipping_lines'][number];
-type ShippingChangableProperties = 'method_title' | 'total' | 'taxes' | 'meta_data';
-type ShippingLineChanges = Pick<ShippingLine, ShippingChangableProperties>;
+type OrderDocument = import('@wcpos/database').OrderDocument;
+type ShippingLine = NonNullable<OrderDocument['shipping_lines']>[number];
 
+/**
+ * Account for string or number changes just in case
+ */
+interface Changes extends Partial<ShippingLine> {
+	amount?: number;
+	prices_include_tax?: boolean;
+	tax_status?: string;
+	tax_class?: string;
+}
+
+/**
+ *
+ */
 export const useUpdateShippingLine = () => {
 	const { currentOrder } = useCurrentOrder();
+	const { localPatch } = useLocalMutation();
+	const { calculateShippingLineTaxesAndTotals } = useCalculateShippingLineTaxAndTotals();
+	const { getShippingLineData } = useShippingLineData();
 
 	/**
+	 * Update shipping line
 	 *
-	 */
-	const applyShippingLineChanges = React.useCallback(
-		(changes: ShippingLineChanges, original: ShippingLine) => {
-			const property = Object.keys(changes)[0];
-			switch (property) {
-				case 'method_title':
-					return { ...original, method_title: changes.method_title };
-				case 'total':
-					return { ...original, total: changes.total };
-				case 'taxes':
-					return { ...original, taxes: changes.taxes };
-				case 'meta_data':
-					return { ...original, meta_data: changes.meta_data };
-				default:
-					return original;
-			}
-		},
-		[]
-	);
-
-	/**
-	 *
+	 * @TODO - what if more than one property is changed at once?
 	 */
 	const updateShippingLine = React.useCallback(
-		async (changes: ShippingLineChanges, original: ShippingLine) => {
-			/**
-			 *
-			 */
-			currentOrder.incrementalModify((order) => {
-				const updatedShippingLines = order.shipping_lines.map((li) => {
-					const uuidMetaData = li.meta_data.find((meta) => meta.key === '_woocommerce_pos_uuid');
-					if (uuidMetaData && uuidMetaData.value === original.meta_data[0].value) {
-						return applyShippingLineChanges(changes, original);
-					}
-					return li;
+		async (uuid: string, changes: Changes) => {
+			const order = currentOrder.getLatest();
+			const json = order.toMutableJSON();
+			let updated = false;
+
+			// get matching shipping line
+			const updatedShippingLines = json.shipping_lines?.map((shippingLine) => {
+				if (
+					updated ||
+					!shippingLine.meta_data?.some(
+						(m) => m.key === '_woocommerce_pos_uuid' && m.value === uuid
+					)
+				) {
+					return shippingLine;
+				}
+
+				// get previous line data from meta_data
+				const prevData = getShippingLineData(shippingLine);
+
+				// extract the meta_data from the changes
+				const { amount, prices_include_tax, tax_class, tax_status, ...rest } = changes;
+
+				// merge the previous line data with the rest of the changes
+				let updatedItem = { ...shippingLine, ...rest };
+
+				// apply the changes to the shipping line
+				updatedItem = updatePosDataMeta(updatedItem, {
+					amount: amount ?? prevData.amount,
+					prices_include_tax: prices_include_tax ?? prevData.prices_include_tax,
+					tax_class: tax_class ?? prevData.tax_class,
+					tax_status: tax_status ?? prevData.tax_status,
 				});
 
-				return { ...order, shipping_lines: updatedShippingLines };
+				// calculate the taxes and totals
+				updatedItem = calculateShippingLineTaxesAndTotals(updatedItem);
+				updated = true;
+				return updatedItem;
 			});
+
+			// if we have updated a line item, patch the order
+			if (updated && updatedShippingLines) {
+				return localPatch({
+					document: order,
+					data: { shipping_lines: updatedShippingLines },
+				});
+			}
 		},
-		[applyShippingLineChanges, currentOrder]
+		[calculateShippingLineTaxesAndTotals, currentOrder, getShippingLineData, localPatch]
 	);
 
 	return { updateShippingLine };

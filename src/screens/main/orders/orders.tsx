@@ -1,26 +1,35 @@
 import * as React from 'react';
 
-import { useTheme } from 'styled-components/native';
+import get from 'lodash/get';
 
-import Box from '@wcpos/components/src/box';
-import ErrorBoundary from '@wcpos/components/src/error-boundary';
-import Suspense from '@wcpos/components/src/suspense';
+import { Box } from '@wcpos/components/src/box';
+import { Card, CardContent, CardHeader } from '@wcpos/components/src/card';
+import { ErrorBoundary } from '@wcpos/components/src/error-boundary';
+import { HStack } from '@wcpos/components/src/hstack';
+import { Suspense } from '@wcpos/components/src/suspense';
+import { VStack } from '@wcpos/components/src/vstack';
 import { useQuery } from '@wcpos/query';
 
-import Actions from './cells/actions';
-import Address from './cells/address';
-import Customer from './cells/customer';
-import CustomerNote from './cells/note';
-import PaymentMethod from './cells/payment-method';
-import Status from './cells/status';
-import Total from './cells/total';
+import { Actions } from './cells/actions';
+import { Address } from './cells/address';
+import { Note } from './cells/note';
+import { Receipt } from './cells/receipt';
 import FilterBar from './filter-bar';
-import SearchBar from './search-bar';
+import { UISettingsForm } from './ui-settings-form';
+import { useAppState } from '../../../contexts/app-state';
 import { useT } from '../../../contexts/translations';
-import DataTable from '../components/data-table';
+import { DataTable } from '../components/data-table';
 import { Date } from '../components/date';
-import UiSettings from '../components/ui-settings';
-import useUI from '../contexts/ui-settings';
+import { Cashier } from '../components/order/cashier';
+import { CreatedVia } from '../components/order/created-via';
+import { Customer } from '../components/order/customer';
+import { OrderNumber } from '../components/order/order-number';
+import { PaymentMethod } from '../components/order/payment-method';
+import { Status } from '../components/order/status';
+import { Total } from '../components/order/total';
+import { QuerySearchInput } from '../components/query-search-input';
+import { UISettingsDialog } from '../components/ui-settings';
+import { useUISettings } from '../contexts/ui-settings';
 
 type OrderDocument = import('@wcpos/database').OrderDocument;
 
@@ -29,22 +38,41 @@ const cells = {
 	billing: Address,
 	shipping: Address,
 	customer_id: Customer,
-	customer_note: CustomerNote,
+	customer_note: Note,
 	status: Status,
 	total: Total,
-	date_created: Date,
-	date_modified: Date,
-	date_completed: Date,
+	date_created_gmt: Date,
+	date_modified_gmt: Date,
+	date_completed_gmt: Date,
+	date_paid_gmt: Date,
 	payment_method: PaymentMethod,
+	created_via: CreatedVia,
+	cashier: Cashier,
+	receipt: Receipt,
+	number: OrderNumber,
 };
+
+const renderCell = (props) => get(cells, props.column.id);
 
 /**
  *
  */
 const Orders = () => {
-	const { uiSettings } = useUI('orders');
-	const theme = useTheme();
+	const { uiSettings } = useUISettings('orders');
 	const t = useT();
+	const { wpCredentials, store } = useAppState();
+
+	const selector = {
+		$and: [{ meta_data: { $elemMatch: { key: '_pos_user', value: String(wpCredentials?.id) } } }],
+	};
+
+	if (store?.id) {
+		selector.$and.push({
+			meta_data: { $elemMatch: { key: '_pos_store', value: String(store?.id) } },
+		});
+	} else {
+		selector.created_via = 'woocommerce-pos';
+	}
 
 	/**
 	 *
@@ -53,60 +81,49 @@ const Orders = () => {
 		queryKeys: ['orders'],
 		collectionName: 'orders',
 		initialParams: {
-			sortBy: uiSettings.get('sortBy'),
-			sortDirection: uiSettings.get('sortDirection'),
+			sort: [{ [uiSettings.sortBy]: uiSettings.sortDirection }],
+			selector,
 		},
+		infiniteScroll: true,
 	});
 
 	/**
 	 *
 	 */
 	return (
-		<Box padding="small" style={{ height: '100%' }}>
-			<Box
-				raised
-				rounding="medium"
-				style={{ backgroundColor: 'white', flexGrow: 1, flexShrink: 1, flexBasis: '0%' }}
-			>
-				<Box
-					horizontal
-					style={{
-						backgroundColor: theme.colors.grey,
-						borderTopLeftRadius: theme.rounding.medium,
-						borderTopRightRadius: theme.rounding.medium,
-					}}
-				>
-					<Box fill space="small">
-						<Box horizontal align="center" padding="small" paddingBottom="none" space="small">
-							<ErrorBoundary>
-								<SearchBar query={query} />
-							</ErrorBoundary>
-							<ErrorBoundary>
-								<UiSettings
-									uiSettings={uiSettings}
-									title={t('Order Settings', { _tags: 'core' })}
-								/>
-							</ErrorBoundary>
-						</Box>
-						<Box horizontal padding="small" paddingTop="none">
+		<Box className="p-2 h-full">
+			<Card className="flex-1">
+				<CardHeader className="p-2 bg-input">
+					<VStack>
+						<HStack>
+							<QuerySearchInput
+								query={query}
+								placeholder={t('Search Orders', { _tags: 'core' })}
+								className="flex-1"
+							/>
+							<UISettingsDialog title={t('Order Settings', { _tags: 'core' })}>
+								<UISettingsForm />
+							</UISettingsDialog>
+						</HStack>
+						<ErrorBoundary>
 							<FilterBar query={query} />
-						</Box>
-					</Box>
-				</Box>
-				<Box style={{ flexGrow: 1, flexShrink: 1, flexBasis: '0%' }}>
+						</ErrorBoundary>
+					</VStack>
+				</CardHeader>
+				<CardContent className="flex-1 p-0">
 					<ErrorBoundary>
 						<Suspense>
 							<DataTable<OrderDocument>
+								id="orders"
 								query={query}
-								uiSettings={uiSettings}
-								cells={cells}
+								renderCell={renderCell}
 								noDataMessage={t('No orders found', { _tags: 'core' })}
 								estimatedItemSize={100}
 							/>
 						</Suspense>
 					</ErrorBoundary>
-				</Box>
-			</Box>
+				</CardContent>
+			</Card>
 		</Box>
 	);
 };

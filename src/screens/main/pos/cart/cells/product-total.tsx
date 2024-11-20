@@ -1,48 +1,77 @@
 import * as React from 'react';
 
-import find from 'lodash/find';
-import { useObservableState } from 'observable-hooks';
+import toNumber from 'lodash/toNumber';
+import { useObservableEagerState } from 'observable-hooks';
 
-import Box from '@wcpos/components/src/box';
-import Text from '@wcpos/components/src/text';
+import { Text } from '@wcpos/components/src/text';
+import { VStack } from '@wcpos/components/src/vstack';
 
 import { useAppState } from '../../../../../contexts/app-state';
-import useCurrencyFormat from '../../../hooks/use-currency-format';
+import { useCurrentOrderCurrencyFormat } from '../../../hooks/use-current-order-currency-format';
 
+import type { CellContext } from '@tanstack/react-table';
+
+type LineItem = import('@wcpos/database').OrderDocument['line_items'][number];
 interface Props {
-	item:
-		| import('@wcpos/database').LineItemDocument
-		| import('@wcpos/database').FeeLineDocument
-		| import('@wcpos/database').ShippingLineDocument;
+	uuid: string;
+	item: LineItem;
+	type: 'line_items';
 }
 
-export const ProductTotal = ({ item, column }: Props) => {
-	const { format } = useCurrencyFormat();
-	const { display } = column;
+/**
+ *
+ */
+export const ProductTotal = ({ row, column }: CellContext<Props, 'total'>) => {
+	const item = row.original.item;
+	const { format } = useCurrentOrderCurrencyFormat();
 	const { store } = useAppState();
-	const taxDisplayCart = useObservableState(store.tax_display_cart$, store.tax_display_cart);
-	const displayTotal =
-		taxDisplayCart === 'incl' ? parseFloat(item.total) + parseFloat(item.total_tax) : item.total;
+	const taxDisplayCart = useObservableEagerState(store.tax_display_cart$);
 
 	/**
-	 * TODO - move this into the ui as a helper function
+	 * Get display values if cart includes tax
 	 */
-	const show = React.useCallback(
-		(key: string): boolean => {
-			const d = find(display, { key });
-			return !!(d && d.show);
-		},
-		[display]
-	);
+	const { displayTotal, displaySubtotal } = React.useMemo(() => {
+		if (taxDisplayCart === 'incl') {
+			return {
+				displayTotal: toNumber(item.total) + toNumber(item.total_tax),
+				displaySubtotal: toNumber(item.subtotal) + toNumber(item.subtotal_tax),
+			};
+		}
 
+		return {
+			displayTotal: toNumber(item.total),
+			displaySubtotal: toNumber(item.subtotal),
+		};
+	}, [item.subtotal, item.subtotal_tax, item.total, item.total_tax, taxDisplayCart]);
+
+	/**
+	 * If subtotal and total are different, then item is on sale
+	 */
+	const onSale = parseFloat(item.total) !== parseFloat(item.subtotal);
+
+	/**
+	 *
+	 */
 	return (
-		<Box space="xSmall" align="end">
-			<Text>{format(displayTotal || 0)}</Text>
-			{show('tax') && (
-				<Text type="textMuted" size="small">
-					{`${taxDisplayCart}. ${format(item.total_tax) || 0} tax`}
+		<VStack space="xs" className="justify-end">
+			{onSale && column.columnDef.meta.show('on_sale') && (
+				<>
+					<Text className="text-muted-foreground line-through text-right">
+						{format(displaySubtotal || 0)}
+					</Text>
+					{column.columnDef.meta.show('tax') && (
+						<Text className="text-sm text-muted-foreground line-through text-right">
+							{`${taxDisplayCart} ${format(item.subtotal_tax || 0)} tax`}
+						</Text>
+					)}
+				</>
+			)}
+			<Text className="text-right">{format(displayTotal || 0)}</Text>
+			{column.columnDef.meta.show('tax') && (
+				<Text className="text-sm text-muted-foreground text-right">
+					{`${taxDisplayCart} ${format(item.total_tax || 0)} tax`}
 				</Text>
 			)}
-		</Box>
+		</VStack>
 	);
 };

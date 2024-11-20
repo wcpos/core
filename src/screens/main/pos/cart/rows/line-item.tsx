@@ -1,77 +1,41 @@
 import * as React from 'react';
 
-import find from 'lodash/find';
 import get from 'lodash/get';
-import uniq from 'lodash/uniq';
-import { useObservable, useSubscription } from 'observable-hooks';
-import { combineLatest } from 'rxjs';
-import { debounceTime, distinctUntilChanged, map, tap } from 'rxjs/operators';
 
-import ErrorBoundary from '@wcpos/components/src/error-boundary';
-import Suspense from '@wcpos/components/src/suspense';
+import { ErrorBoundary } from '@wcpos/components/src/error-boundary';
+import { Suspense } from '@wcpos/components/src/suspense';
 import Table, { CellRenderer, TableProps } from '@wcpos/components/src/table';
-import Text from '@wcpos/components/src/text';
+import { Text } from '@wcpos/components/src/text';
 
-import { useTaxCalculation } from './use-tax-calculation';
-import { useTaxHelpers } from '../../../contexts/tax-helpers';
 import { Actions } from '../cells/actions';
 import { Price } from '../cells/price';
 import { ProductName } from '../cells/product-name';
 import { ProductTotal } from '../cells/product-total';
 import { Quantity } from '../cells/quantity';
+import { RegularPrice } from '../cells/regular_price';
 import { Subtotal } from '../cells/subtotal';
 
-type LineItemDocument = import('@wcpos/database').LineItemDocument;
-type RenderItem = TableProps<LineItemDocument>['renderItem'];
+type LineItem = import('@wcpos/database').OrderDocument['line_items'][number];
+type RenderItem = TableProps<LineItem>['renderItem'];
 
 const cells = {
 	actions: Actions,
 	name: ProductName,
 	price: Price,
+	regular_price: RegularPrice,
 	quantity: Quantity,
 	subtotal: Subtotal,
 	total: ProductTotal,
 };
 
 /**
- * When rxdb properties are updated, they emit for each, eg: total and subtotal
- * This triggers unnecessary calculations, so we debounce the updates
- */
-const DEBOUNCE_TIME_MS = 10;
-
-/**
  *
  */
-export const LineItemRow: RenderItem = ({ item, index, target }) => {
-	// const { calculateLineItemTaxes } = useTaxCalculation(item);
-
-	// const lineItem$ = useObservable(
-	// 	(input$) =>
-	// 		combineLatest([item.subtotal$, item.total$, item.tax_class$, item.meta_data$]).pipe(
-	// 			map(([subtotal, total, taxClass, metaData = []]) => {
-	// 				const taxStatus = metaData.find((m) => m.key === '_woocommerce_pos_tax_status')?.value;
-	// 				return {
-	// 					subtotal,
-	// 					total,
-	// 					taxClass,
-	// 					taxStatus,
-	// 				};
-	// 			}),
-	// 			distinctUntilChanged((prev, next) => JSON.stringify(prev) === JSON.stringify(next)),
-	// 			debounceTime(DEBOUNCE_TIME_MS)
-	// 		),
-	// 	[]
-	// );
-
-	// /**
-	//  * Calculate taxes
-	//  */
-	// useSubscription(lineItem$, calculateLineItemTaxes);
-
+export const LineItemRow = ({ index, uuid, item }) => {
 	/**
 	 *
 	 */
-	const cellRenderer = React.useCallback<CellRenderer<LineItemDocument>>(
+	const cellRenderer = React.useCallback<CellRenderer<LineItem>>(
 		({ item, column, index, cellWidth }) => {
 			const Cell = get(cells, column.key);
 
@@ -79,7 +43,14 @@ export const LineItemRow: RenderItem = ({ item, index, target }) => {
 				return (
 					<ErrorBoundary>
 						<Suspense>
-							<Cell item={item} column={column} index={index} cellWidth={cellWidth} />
+							<Cell
+								type="line_items"
+								uuid={uuid}
+								item={item}
+								column={column}
+								index={index}
+								cellWidth={cellWidth}
+							/>
 						</Suspense>
 					</ErrorBoundary>
 				);
@@ -91,8 +62,8 @@ export const LineItemRow: RenderItem = ({ item, index, target }) => {
 
 			return null;
 		},
-		[]
+		[uuid]
 	);
 
-	return <Table.Row item={item} index={index} target={target} cellRenderer={cellRenderer} />;
+	return <Table.Row item={item} index={index} cellRenderer={cellRenderer} />;
 };

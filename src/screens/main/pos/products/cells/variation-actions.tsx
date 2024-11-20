@@ -1,19 +1,21 @@
 import * as React from 'react';
-import { View } from 'react-native';
 
-import Icon from '@wcpos/components/src/icon';
+import { IconButton } from '@wcpos/components/src/icon-button';
 
 import { useAddVariation } from '../../hooks/use-add-variation';
 
-interface Props {
-	item: import('@wcpos/database').ProductVariationDocument;
-	parent: import('@wcpos/database').ProductDocument;
-}
+import type { CellContext } from '@tanstack/react-table';
+
+type ProductVariationDocument = import('@wcpos/database').ProductVariationDocument;
 
 /**
  *
  */
-export const ProductVariationActions = ({ item: variation, parent }: Props) => {
+export const ProductVariationActions = ({
+	row,
+}: CellContext<{ document: ProductVariationDocument }, 'actions'>) => {
+	const variation = row.original.document;
+	const parent = row.getParentRow().document;
 	const { addVariation } = useAddVariation();
 
 	/**
@@ -33,11 +35,11 @@ export const ProductVariationActions = ({ item: variation, parent }: Props) => {
 	 *
 	 */
 	return (
-		<Icon
+		<IconButton
 			name="circlePlus"
-			size="xxLarge"
+			size="4xl"
 			onPress={() => addVariation(variation, parent, metaData)}
-			type="success"
+			variant="success"
 		/>
 	);
 };

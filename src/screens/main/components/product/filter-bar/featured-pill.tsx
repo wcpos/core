@@ -1,34 +1,39 @@
 import * as React from 'react';
 
-import get from 'lodash/get';
-import { useObservableState } from 'observable-hooks';
+import { useObservableEagerState } from 'observable-hooks';
 import { map } from 'rxjs/operators';
 
-import Pill from '@wcpos/components/src/pill';
+import { ButtonText, ButtonPill } from '@wcpos/components/src/button';
+import type { Query } from '@wcpos/query';
 
 import { useT } from '../../../../../contexts/translations';
+
+type ProductCollection = import('@wcpos/database').ProductCollection;
+
+interface Props {
+	query: Query<ProductCollection>;
+}
 
 /**
  *
  */
-const FeaturedPill = ({ query }) => {
-	const isActive = useObservableState(
-		query.params$.pipe(map((params) => get(params, ['selector', 'featured']))),
-		get(query.getParams(), ['selector', 'featured'])
+const FeaturedPill = ({ query }: Props) => {
+	const isActive = useObservableEagerState(
+		query.rxQuery$.pipe(map(() => query.getSelector('featured')))
 	);
 	const t = useT();
 
 	return (
-		<Pill
-			icon="star"
-			size="small"
-			color={isActive ? 'primary' : 'lightGrey'}
-			onPress={() => query.where('featured', isActive ? null : true)}
+		<ButtonPill
+			leftIcon="star"
+			size="xs"
+			variant={isActive ? 'default' : 'muted'}
+			onPress={() => query.where('featured').equals(true).exec()}
 			removable={isActive}
-			onRemove={() => query.where('featured', null)}
+			onRemove={() => query.removeWhere('featured').exec()}
 		>
-			{t('Featured', { _tags: 'core' })}
-		</Pill>
+			<ButtonText>{t('Featured', { _tags: 'core' })}</ButtonText>
+		</ButtonPill>
 	);
 };
 

@@ -1,36 +1,43 @@
 import * as React from 'react';
+import { View } from 'react-native';
 
 import { useNavigation } from '@react-navigation/native';
 import isEmpty from 'lodash/isEmpty';
 
-import Box from '@wcpos/components/src/box';
-import Button from '@wcpos/components/src/button';
-import InlineError from '@wcpos/components/src/inline-error';
-import SimpleTable from '@wcpos/components/src/simple-table';
-import Text from '@wcpos/components/src/text';
+import { Button, ButtonText } from '@wcpos/components/src/button';
+import { HStack } from '@wcpos/components/src/hstack';
+import { Icon } from '@wcpos/components/src/icon';
+import {
+	Table,
+	TableHeader,
+	TableHead,
+	TableRow,
+	TableCell,
+	TableBody,
+} from '@wcpos/components/src/table';
+import { Text } from '@wcpos/components/src/text';
+import { VStack } from '@wcpos/components/src/vstack';
 import { TaxRateDocument } from '@wcpos/database';
 
 import { useT } from '../../../../../contexts/translations';
 
 interface DisplayCurrentTaxRatesProps {
 	rates: TaxRateDocument[];
-	country: string;
-	state: string;
-	city: string;
-	postcode: string;
-	setOpened: React.Dispatch<React.SetStateAction<boolean>>;
+	country?: string;
+	state?: string;
+	city?: string;
+	postcode?: string;
 }
 
 /**
  *
  */
-const DisplayCurrentTaxRates = ({
+export const DisplayCurrentTaxRates = ({
 	rates,
 	country,
 	state,
 	city,
 	postcode,
-	setOpened,
 }: DisplayCurrentTaxRatesProps) => {
 	const navigation = useNavigation();
 	const t = useT();
@@ -39,54 +46,94 @@ const DisplayCurrentTaxRates = ({
 	 *
 	 */
 	return (
-		<Box space="normal" padding="small">
-			<Box space="xSmall" style={{ width: '100%' }}>
-				<Text weight="bold">{t('Calculate tax based on', { _tags: 'core' })}:</Text>
-				<SimpleTable
-					columns={[
-						{ key: 'country', label: t('Country', { _tags: 'core' }) },
-						{ key: 'state', label: t('State', { _tags: 'core' }) },
-						{ key: 'city', label: t('City', { _tags: 'core' }) },
-						{ key: 'postcode', label: t('Postcode', { _tags: 'core' }) },
-					]}
-					data={[
-						{
-							country: country || '-',
-							state: state || '-',
-							city: city || '-',
-							postcode: postcode || '-',
-						},
-					]}
-				/>
-			</Box>
-			<Box space="xSmall" style={{ width: '100%' }}>
-				<Text weight="bold">{t('Matched rates', { _tags: 'core' })}:</Text>
+		<VStack space="md">
+			<VStack>
+				<Text className="font-bold">{t('Calculate tax based on', { _tags: 'core' })}:</Text>
+				<Table>
+					<TableHeader>
+						<TableRow>
+							<TableHead>
+								<Text>{t('Country', { _tags: 'core' })}</Text>
+							</TableHead>
+							<TableHead>
+								<Text>{t('State', { _tags: 'core' })}</Text>
+							</TableHead>
+							<TableHead>
+								<Text>{t('City', { _tags: 'core' })}</Text>
+							</TableHead>
+							<TableHead>
+								<Text>{t('Postcode', { _tags: 'core' })}</Text>
+							</TableHead>
+						</TableRow>
+					</TableHeader>
+					<TableBody>
+						<TableRow>
+							<TableCell>
+								<Text>{country || '-'}</Text>
+							</TableCell>
+							<TableCell>
+								<Text>{state || '-'}</Text>
+							</TableCell>
+							<TableCell>
+								<Text>{city || '-'}</Text>
+							</TableCell>
+							<TableCell>
+								<Text>{postcode || '-'}</Text>
+							</TableCell>
+						</TableRow>
+					</TableBody>
+				</Table>
+			</VStack>
+			<VStack>
+				<Text className="font-bold">{t('Matched rates', { _tags: 'core' })}:</Text>
 				{Array.isArray(rates) && rates.length > 0 ? (
-					<SimpleTable
-						columns={[
-							{ key: 'name', label: t('Name', { _tags: 'core' }) },
-							{ key: 'rate', label: t('Rate', { _tags: 'core' }) },
-							{ key: 'class', label: t('Class', { _tags: 'core', _context: 'tax class' }) },
-						]}
-						data={rates}
-					/>
+					<Table>
+						<TableHeader>
+							<TableRow>
+								<TableHead>
+									<Text>{t('Name', { _tags: 'core' })}</Text>
+								</TableHead>
+								<TableHead>
+									<Text>{t('Rate', { _tags: 'core' })}</Text>
+								</TableHead>
+								<TableHead>
+									<Text>{t('Class', { _tags: 'core' })}</Text>
+								</TableHead>
+							</TableRow>
+						</TableHeader>
+						<TableBody>
+							{rates.map((rate, index) => (
+								<TableRow key={rate.id} index={index}>
+									<TableCell>
+										<Text>{rate.name}</Text>
+									</TableCell>
+									<TableCell>
+										<Text>{rate.rate}</Text>
+									</TableCell>
+									<TableCell>
+										<Text>{rate.class}</Text>
+									</TableCell>
+								</TableRow>
+							))}
+						</TableBody>
+					</Table>
 				) : (
-					<InlineError message={t('No rates matched', { _tags: 'core' })} />
+					<HStack space="xs">
+						<Icon variant="error" name="triangleExclamation" />
+						<Text className="text-sm text-error">{t('No rates matched', { _tags: 'core' })}</Text>
+					</HStack>
 				)}
-			</Box>
-			<Box horizontal>
+			</VStack>
+			<View className="flex-row">
 				<Button
-					type="secondary"
-					size="small"
-					title={t('View all tax rates', { _tags: 'core' })}
+					variant="muted"
 					onPress={() => {
-						setOpened(false);
 						navigation.navigate('TaxRates');
 					}}
-				/>
-			</Box>
-		</Box>
+				>
+					<ButtonText>{t('View all tax rates', { _tags: 'core' })}</ButtonText>
+				</Button>
+			</View>
+		</VStack>
 	);
 };
-
-export default DisplayCurrentTaxRates;

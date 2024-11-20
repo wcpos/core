@@ -6,113 +6,117 @@ import get from 'lodash/get';
 import { useObservableState } from 'observable-hooks';
 import { map } from 'rxjs/operators';
 
-import ErrorBoundary from '@wcpos/components/src/error-boundary';
-import { useModal } from '@wcpos/components/src/modal';
-import useSnackbar from '@wcpos/components/src/snackbar';
-import WebView from '@wcpos/components/src/webview';
+import { ErrorBoundary } from '@wcpos/components/src/error-boundary';
+import { Toast } from '@wcpos/components/src/toast';
+import { WebView } from '@wcpos/components/src/webview';
 import log from '@wcpos/utils/src/logger';
+
+import { useAppState } from '../../../../../contexts/app-state';
+import { useUISettings } from '../../../contexts/ui-settings';
+import { useStockAdjustment } from '../../../hooks/use-stock-adjustment';
 
 type OrderDocument = import('@wcpos/database').OrderDocument;
 
 export interface PaymentWebviewProps {
 	order: OrderDocument;
+	setLoading: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-const PaymentWebview = ({ order }: PaymentWebviewProps) => {
-	const addSnackbar = useSnackbar();
-	const { setPrimaryAction } = useModal();
-	const iframeRef = React.useRef<HTMLIFrameElement>();
-	const navigation = useNavigation();
-	const paymentURL = useObservableState(
-		order.links$.pipe(map((links) => get(links, ['payment', 0, 'href']))),
-		get(order, ['links', 'payment', 0, 'href'])
-	);
+/**
+ *
+ */
+export const PaymentWebview = React.forwardRef<HTMLIFrameElement, PaymentWebviewProps>(
+	({ order, setLoading }: PaymentWebviewProps, ref) => {
+		const navigation = useNavigation();
+		const paymentURL = useObservableState(
+			order.links$.pipe(map((links) => get(links, ['payment', 0, 'href']))),
+			get(order, ['links', 'payment', 0, 'href'])
+		);
+		const { wpCredentials } = useAppState();
+		const jwt = useObservableState(wpCredentials.jwt$, wpCredentials.jwt);
+		const { stockAdjustment } = useStockAdjustment();
+		const { uiSettings } = useUISettings('pos-cart');
 
-	/**
-	 *
-	 */
-	const handlePaymentReceived = React.useCallback(
-		async (event: MessageEvent) => {
-			if (event?.data?.action === 'wcpos-payment-received') {
-				try {
-					const payload = event.data.payload;
-					if (payload) {
+		/**
+		 *
+		 */
+		const paymentURLWithToken = React.useMemo(() => {
+			// Append the JWT token as a query parameter to the payment URL
+			const url = new URL(paymentURL);
+			url.searchParams.append('token', jwt);
+			return url.toString();
+		}, [paymentURL, jwt]);
+
+		/**
+		 *
+		 */
+		const handlePaymentReceived = React.useCallback(
+			async (event: MessageEvent) => {
+				if (
+					event?.data?.action === 'wcpos-payment-received' &&
+					typeof event?.data?.payload === 'object'
+				) {
+					try {
+						const payload = event.data.payload;
+						// get line_items with "_reduced_stock" meta
+						const reducedStockItems = (payload?.line_items || []).filter((item) =>
+							item.meta_data.some((meta) => meta.key === '_reduced_stock')
+						);
+						stockAdjustment(reducedStockItems);
+
 						const latest = order.getLatest();
 						const parsedData = latest.collection.parseRestResponse(payload);
 						const success = await latest.incrementalPatch(parsedData);
 						if (success) {
-							navigation.dispatch(
-								StackActions.replace('Receipt', {
-									orderID: order.uuid,
-								})
-							);
+							if (uiSettings.autoShowReceipt) {
+								navigation.dispatch(
+									StackActions.replace('Receipt', {
+										orderID: order.uuid,
+									})
+								);
+							} else {
+								navigation.navigate('POSStack', { screen: 'POS' });
+							}
 						}
+					} catch (err) {
+						log.error(err);
+						Toast.show({ text1: err?.message, type: 'error' });
+					} finally {
+						setLoading(false);
 					}
-				} catch (err) {
-					log.error(err);
-					addSnackbar({ message: err?.message, type: 'error' });
-				} finally {
-					setPrimaryAction((prev) => {
-						return {
-							...prev,
-							loading: false,
-						};
-					});
 				}
-			}
-		},
-		[addSnackbar, navigation, order, setPrimaryAction]
-	);
+			},
+			[navigation, order, stockAdjustment, uiSettings.autoShowReceipt, setLoading]
+		);
 
-	/**
-	 *
-	 */
-	const handleProcessPayment = React.useCallback(() => {
-		if (iframeRef.current && iframeRef.current.contentWindow) {
-			iframeRef.current.contentWindow.postMessage({ action: 'wcpos-process-payment' }, '*');
-		}
-		setPrimaryAction((prev) => {
-			return {
-				...prev,
-				loading: true,
-			};
-		});
-	}, [setPrimaryAction]);
+		/**
+		 *
+		 */
+		const onWebViewLoaded = React.useCallback((event) => {
+			//
+		}, []);
 
-	/**
-	 *
-	 */
-	setPrimaryAction((prev) => ({
-		...prev,
-		action: handleProcessPayment,
-	}));
-
-	/**
-	 *
-	 */
-	return (
-		<View style={{ flex: 1 }}>
+		/**
+		 *
+		 */
+		return (
 			<ErrorBoundary>
 				{paymentURL ? (
 					<WebView
-						ref={iframeRef}
-						src={paymentURL}
-						onLoad={() => {
-							// setLoading(false);
-						}}
+						ref={ref}
+						src={paymentURLWithToken}
+						onLoad={onWebViewLoaded}
 						onMessage={(event) => {
 							if (event?.data?.payload?.data) {
-								addSnackbar({ message: event?.data?.payload?.message });
+								Toast.show({ text1: event?.data?.payload?.message, type: 'error' });
 							} else {
 								handlePaymentReceived(event);
 							}
 						}}
-						style={{ height: '100%' }}
+						className="h-full flex-1"
 					/>
 				) : null}
 			</ErrorBoundary>
-		</View>
-	);
-};
-
-export default PaymentWebview;
+		);
+	}
+);

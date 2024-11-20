@@ -1,17 +1,14 @@
 import * as React from 'react';
 
-import { useObservableState } from 'observable-hooks';
+import { Text } from '@wcpos/components/src/text';
 
-import Text from '@wcpos/components/src/text';
+import type { CellContext } from '@tanstack/react-table';
 
-type Props = {
-	item: import('rxdb').RxDocument;
-	column: import('../contexts/ui-settings').UISettingsColumn;
+/**
+ *
+ */
+export const TextCell = ({ row, column }: CellContext<any, string>) => {
+	const item = row.original.document;
+
+	return <Text>{item[column.id] ? String(item[column.id]) : ''}</Text>;
 };
-
-const TextCell = ({ item, column }: Props) => {
-	const text = useObservableState(item[column.key + '$'], item[column.key]);
-	return <Text>{text}</Text>;
-};
-
-export default TextCell;

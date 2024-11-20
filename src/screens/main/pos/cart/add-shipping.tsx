@@ -1,175 +1,173 @@
 import * as React from 'react';
+import { View } from 'react-native';
 
+import { zodResolver } from '@hookform/resolvers/zod';
 import isEmpty from 'lodash/isEmpty';
-import { useObservableSuspense, useObservableState } from 'observable-hooks';
+import { useObservableEagerState } from 'observable-hooks';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
 
-import Box from '@wcpos/components/src/box';
-import Icon from '@wcpos/components/src/icon';
-import Modal from '@wcpos/components/src/modal';
-import Select from '@wcpos/components/src/select';
-import Text from '@wcpos/components/src/text';
-import Form from '@wcpos/react-native-jsonschema-form';
-import log from '@wcpos/utils/src/logger';
+import {
+	DialogAction,
+	DialogClose,
+	DialogFooter,
+	useRootContext,
+} from '@wcpos/components/src/dialog';
+import {
+	Form,
+	FormField,
+	FormInput,
+	FormSwitch,
+	FormRadioGroup,
+	FormSelect,
+} from '@wcpos/components/src/form';
+import { VStack } from '@wcpos/components/src/vstack';
 
 import { useAppState } from '../../../../contexts/app-state';
 import { useT } from '../../../../contexts/translations';
-import useRestHttpClient from '../../hooks/use-rest-http-client';
-import { useCurrentOrder } from '../contexts/current-order';
+import { CurrencyInput } from '../../components/currency-input';
+import { FormErrors } from '../../components/form-errors';
+import { ShippingMethodSelect } from '../../components/shipping-method-select';
+import { TaxClassSelect } from '../../components/tax-class-select';
+import { TaxStatusRadioGroup } from '../../components/tax-status-radio-group';
 import { useAddShipping } from '../hooks/use-add-shipping';
 
-/**
- *
- */
-const ShippingSelect = ({ shippingResource, selectedMethod, onSelect }) => {
-	const options = useObservableSuspense(shippingResource);
-	const http = useRestHttpClient();
-	const { storeDB } = useAppState();
-
-	React.useEffect(() => {
-		async function fetchShippingMethods() {
-			try {
-				const { data } = await http.get('shipping_methods');
-				storeDB.upsertLocal('shipping', {
-					methods: data,
-				});
-			} catch (err) {
-				log.error(err);
-			}
-		}
-
-		fetchShippingMethods();
-	}, [http, storeDB]);
-
-	return <Select options={options} value={selectedMethod} onChange={onSelect} />;
-};
-
-const initialData = {
-	method_title: '',
-	method_id: '',
-	total: '',
-};
+const formSchema = z.object({
+	method_title: z.string().optional(),
+	method_id: z.string().optional(),
+	amount: z.string().optional(),
+	prices_include_tax: z.boolean().optional(),
+	tax_status: z.enum(['taxable', 'none']),
+	tax_class: z.string().optional(),
+});
 
 /**
  *
  */
-const AddShipping = () => {
-	const [opened, setOpened] = React.useState(false);
-	const [data, setData] = React.useState(initialData);
-	const { currentOrder } = useCurrentOrder();
-	const { addShipping } = useAddShipping();
-	const currencySymbol = useObservableState(
-		currentOrder.currency_symbol$,
-		currentOrder.currency_symbol
-	);
+export const AddShipping = () => {
 	const t = useT();
-
-	/**
-	 * Create observable shipping resource
-	 */
-	// const shippingResource = React.useMemo(() => {
-	// 	return new ObservableResource(
-	// 		storeDB?.getLocal$('shipping').pipe(
-	// 			map((localDoc) => {
-	// 				const methods = localDoc?.get('methods') || [];
-	// 				return methods.map((method) => ({
-	// 					label: method.title,
-	// 					value: method.id,
-	// 				}));
-	// 			})
-	// 		)
-	// 	);
-	// }, [storeDB]);
+	const { addShipping } = useAddShipping();
+	const { onOpenChange } = useRootContext();
+	const { store } = useAppState();
+	const shippingTaxClass = useObservableEagerState(store.shipping_tax_class$);
 
 	/**
 	 *
 	 */
-	const handleChange = React.useCallback(
-		(newData) => {
-			setData((prev) => ({ ...prev, ...newData }));
+	const form = useForm<z.infer<typeof formSchema>>({
+		resolver: zodResolver(formSchema),
+		defaultValues: {
+			method_title: '',
+			method_id: '',
+			amount: '0',
+			prices_include_tax: true,
+			tax_status: 'taxable',
+			tax_class: shippingTaxClass,
 		},
-		[setData]
-	);
+	});
 
-	const handleAddShipping = () => {
-		try {
-			const { method_title, method_id, total } = data;
+	/**
+	 * NOTE: tax_class 'standard' needs to be sent as an empty string, otherwise the API will throw an error.
+	 */
+	const handleAdd = React.useCallback(
+		(data: z.infer<typeof formSchema>) => {
+			const { method_title, method_id, amount, tax_status, tax_class, prices_include_tax } = data;
+
 			addShipping({
 				method_title: isEmpty(method_title) ? t('Shipping', { _tags: 'core' }) : method_title,
 				method_id: isEmpty(method_id) ? 'local_pickup' : method_id,
-				total: isEmpty(total) ? '0' : total,
+				amount: isEmpty(amount) ? '0' : amount,
+				tax_status,
+				tax_class: tax_class === 'standard' ? '' : tax_class,
+				prices_include_tax,
 			});
-			setData(initialData);
-			setOpened(false);
-		} catch (error) {
-			log.error(error);
-		}
-	};
-
-	/**
-	 *
-	 */
-	const schema = React.useMemo(
-		() => ({
-			type: 'object',
-			properties: {
-				method_title: { type: 'string', title: t('Shipping Method Title', { _tags: 'core' }) },
-				method_id: { type: 'string', title: t('Shipping Method ID', { _tags: 'core' }) },
-				total: { type: 'string', title: t('Total', { _tags: 'core' }) },
-			},
-		}),
-		[t]
-	);
-
-	/**
-	 *
-	 */
-	const uiSchema = React.useMemo(
-		() => ({
-			total: {
-				'ui:options': { prefix: currencySymbol },
-				'ui:placeholder': '0',
-			},
-			method_title: {
-				'ui:placeholder': t('Shipping', { _tags: 'core' }),
-			},
-			method_id: {
-				'ui:placeholder': 'local_pickup',
-			},
-		}),
-		[currencySymbol, t]
+			onOpenChange(false);
+		},
+		[addShipping, onOpenChange, t]
 	);
 
 	/**
 	 *
 	 */
 	return (
-		<>
-			<Box horizontal space="small" padding="small" align="center">
-				<Box fill>
-					<Text>{t('Add Shipping', { _tags: 'core' })}</Text>
-				</Box>
-				<Box>
-					<Icon name="circlePlus" onPress={() => setOpened(true)} />
-				</Box>
-			</Box>
-			<Modal
-				opened={opened}
-				onClose={() => setOpened(false)}
-				title={t('Add Shipping', { _tags: 'core' })}
-				primaryAction={{
-					label: t('Add to Cart', { _tags: 'core' }),
-					action: handleAddShipping,
-				}}
-				secondaryActions={[
-					{ label: t('Cancel', { _tags: 'core' }), action: () => setOpened(false) },
-				]}
-			>
-				<Box space="small">
-					<Form formData={data} schema={schema} uiSchema={uiSchema} onChange={handleChange} />
-				</Box>
-			</Modal>
-		</>
+		<Form {...form}>
+			<VStack className="gap-4">
+				<FormErrors />
+				<VStack>
+					<View className="grid grid-cols-2 gap-4">
+						<FormField
+							control={form.control}
+							name="method_title"
+							render={({ field }) => (
+								<FormInput
+									label={t('Shipping Method Title', { _tags: 'core' })}
+									placeholder={t('Shipping', { _tags: 'core' })}
+									{...field}
+								/>
+							)}
+						/>
+						<FormField
+							control={form.control}
+							name="method_id"
+							render={({ field }) => (
+								<FormSelect
+									customComponent={ShippingMethodSelect}
+									label={t('Shipping Method', { _tags: 'core' })}
+									{...field}
+								/>
+							)}
+						/>
+						<FormField
+							control={form.control}
+							name="amount"
+							render={({ field }) => (
+								<FormInput
+									customComponent={CurrencyInput}
+									label={t('Amount', { _tags: 'core' })}
+									{...field}
+								/>
+							)}
+						/>
+						<View className="justify-center">
+							<FormField
+								control={form.control}
+								name="prices_include_tax"
+								render={({ field }) => (
+									<FormSwitch label={t('Amount Includes Tax', { _tags: 'core' })} {...field} />
+								)}
+							/>
+						</View>
+						<FormField
+							control={form.control}
+							name="tax_class"
+							render={({ field }) => (
+								<FormSelect
+									label={t('Tax Class', { _tags: 'core' })}
+									customComponent={TaxClassSelect}
+									{...field}
+								/>
+							)}
+						/>
+						<FormField
+							control={form.control}
+							name="tax_status"
+							render={({ field }) => (
+								<FormRadioGroup
+									label={t('Tax Status', { _tags: 'core' })}
+									customComponent={TaxStatusRadioGroup}
+									{...field}
+								/>
+							)}
+						/>
+					</View>
+				</VStack>
+				<DialogFooter className="px-0">
+					<DialogClose>{t('Cancel', { _tags: 'core' })}</DialogClose>
+					<DialogAction onPress={form.handleSubmit(handleAdd)}>
+						{t('Add to Cart', { _tags: 'core' })}
+					</DialogAction>
+				</DialogFooter>
+			</VStack>
+		</Form>
 	);
 };
-
-export default AddShipping;

@@ -1,24 +1,24 @@
 import * as React from 'react';
 
-import Box from '@wcpos/components/src/box';
-import Text from '@wcpos/components/src/text';
+import { ModalFooter, ModalClose } from '@wcpos/components/src/modal';
+import { Text } from '@wcpos/components/src/text';
+import { VStack } from '@wcpos/components/src/vstack';
 
-import BarcodeDisplay from './display';
-import BarcodeSettings from './settings';
+import { BarcodeDisplay } from './display';
+import { BarcodeSettings } from './settings';
 import { useT } from '../../../../contexts/translations';
 
-const BarcodeScanning = () => {
+export const BarcodeScanning = () => {
 	const t = useT();
 
 	return (
-		<Box space="normal">
+		<VStack className="gap-4">
 			<BarcodeSettings />
-			<Text size="medium" weight="medium">
-				{t('Barcode Scanning Test', { _tags: 'core' })}
-			</Text>
+			<Text className="text-md font-bold">{t('Barcode Scanning Test', { _tags: 'core' })}</Text>
 			<BarcodeDisplay />
-		</Box>
+			<ModalFooter className="px-0">
+				<ModalClose>{t('Close', { _tags: 'core' })}</ModalClose>
+			</ModalFooter>
+		</VStack>
 	);
 };
-
-export default BarcodeScanning;

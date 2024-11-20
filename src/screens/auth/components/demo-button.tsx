@@ -1,8 +1,9 @@
 import * as React from 'react';
 
-import Button from '@wcpos/components/src/button';
-import Icon from '@wcpos/components/src/icon';
-import Loader from '@wcpos/components/src/loader';
+import { Button, ButtonText } from '@wcpos/components/src/button';
+import { HStack } from '@wcpos/components/src/hstack';
+import { Icon } from '@wcpos/components/src/icon';
+import { Loader } from '@wcpos/components/src/loader';
 import useHttpClient from '@wcpos/hooks/src/use-http-client';
 import log from '@wcpos/utils/src/logger';
 
@@ -27,7 +28,7 @@ const DemoButton = () => {
 			const { data } = await http.get(
 				'https://demo.wcpos.com/wp-json/wcpos/v1/jwt/authorize?user=demo'
 			);
-			site.update({ $push: { wp_credentials: data } });
+			site.incrementalUpdate({ $push: { wp_credentials: data } });
 		} catch (err) {
 			log.error(err);
 		} finally {
@@ -37,19 +38,20 @@ const DemoButton = () => {
 
 	return (
 		<Button
-			title={t('Enter Demo Store', { _tags: 'core' })}
-			background="clear"
-			size="small"
-			type="secondary"
-			accessoryRight={
+			onPress={handleDemoLogin}
+			disabled={loading}
+			variant="muted"
+			size="sm"
+			rightIcon={
 				loading ? (
-					<Loader size="small" type="secondary" />
+					<Loader variant="muted" size="xs" />
 				) : (
-					<Icon name="arrowRight" size="small" type="secondary" />
+					<Icon variant="muted" size="xs" name="arrowRight" />
 				)
 			}
-			onPress={handleDemoLogin}
-		/>
+		>
+			<ButtonText>{t('Enter Demo Store', { _tags: 'core' })}</ButtonText>
+		</Button>
 	);
 };
 

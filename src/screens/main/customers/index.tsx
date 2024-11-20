@@ -1,21 +1,16 @@
 import * as React from 'react';
 
-import { StackActions } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import get from 'lodash/get';
 import { ObservableResource } from 'observable-hooks';
-import { from } from 'rxjs';
+import { filter } from 'rxjs/operators';
 
-import ErrorBoundary from '@wcpos/components/src/error-boundary';
-import Suspense from '@wcpos/components/src/suspense';
-import Text from '@wcpos/components/src/text';
+import { ErrorBoundary } from '@wcpos/components/src/error-boundary';
+import { Suspense } from '@wcpos/components/src/suspense';
 
-import AddCustomer from './add-customer';
+import { AddCustomer } from './add-customer';
 import Customers from './customers';
-import EditCustomer from './edit-customer';
-import { useT } from '../../../contexts/translations';
-import { ModalLayout } from '../../components/modal-layout';
-import useUI from '../contexts/ui-settings';
+import { EditCustomer } from './edit-customer';
 import { useCollection } from '../hooks/use-collection';
 
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -47,21 +42,10 @@ const CustomersWithProviders = () => {
 const AddCustomerWithProviders = ({
 	navigation,
 }: NativeStackScreenProps<CustomersStackParamList, 'AddCustomer'>) => {
-	const t = useT();
-
 	return (
-		<ModalLayout
-			title={t('Add Customer', { _tags: 'core' })}
-			primaryAction={{ label: t('Save to Server', { _tags: 'core' }) }}
-			secondaryActions={[
-				{
-					label: t('Cancel', { _tags: 'core' }),
-					action: () => navigation.dispatch(StackActions.pop(1)),
-				},
-			]}
-		>
+		<ErrorBoundary>
 			<AddCustomer />
-		</ModalLayout>
+		</ErrorBoundary>
 	);
 };
 
@@ -74,28 +58,16 @@ const EditCustomerWithProviders = ({
 }: NativeStackScreenProps<CustomersStackParamList, 'EditCustomer'>) => {
 	const customerID = get(route, ['params', 'customerID']);
 	const { collection } = useCollection('customers');
-	const t = useT();
+	const query = collection.findOneFix(customerID);
 
-	const resource = React.useMemo(
-		() => new ObservableResource(from(collection.findOneFix(customerID).exec())),
-		[collection, customerID]
-	);
+	const resource = React.useMemo(() => new ObservableResource(query.$), [query]);
 
 	return (
-		<ModalLayout
-			title={t('Edit Customer', { _tags: 'core' })}
-			primaryAction={{ label: t('Save to Server', { _tags: 'core' }) }}
-			secondaryActions={[
-				{
-					label: t('Cancel', { _tags: 'core' }),
-					action: () => navigation.dispatch(StackActions.pop(1)),
-				},
-			]}
-		>
+		<ErrorBoundary>
 			<Suspense>
 				<EditCustomer resource={resource} />
 			</Suspense>
-		</ModalLayout>
+		</ErrorBoundary>
 	);
 };
 

@@ -1,5 +1,5 @@
 {
-  "pos.products": {
+  "pos-products": {
     "sortBy": "name",
     "sortDirection": "asc",
     "width": 60,
@@ -40,6 +40,10 @@
           {
             "key": "attributes",
             "show": false
+          },
+          {
+            "key": "meta_data",
+            "show": false
           }
         ]
       },
@@ -78,21 +82,30 @@
       {
         "key": "actions",
         "disableSort": true,
-        "width": 46,
+        "width": 60,
         "hideLabel": true,
         "show": true
       }
-    ]
+    ],
+    "metaDataKeys": ""
   },
-  "pos.cart": {
+  "pos-cart": {
     "sortBy": "id",
     "sortDirection": "asc",
+    "autoShowReceipt": true,
+    "autoPrintReceipt": false,
     "quickDiscounts": [5, 10, 15, 20],
     "columns": [
       {
         "key": "quantity",
         "show": true,
-        "align": "center"
+        "align": "center",
+        "display": [
+          {
+            "key": "split",
+            "show": false
+          }
+        ]
       },
       {
         "key": "name",
@@ -112,6 +125,17 @@
       {
         "key": "price",
         "show": true,
+        "align": "right",
+        "display": [
+          {
+            "key": "on_sale",
+            "show": true
+          }
+        ]
+      },
+      {
+        "key": "regular_price",
+        "show": false,
         "align": "right"
       },
       {
@@ -133,12 +157,16 @@
           {
             "key": "tax",
             "show": false
+          },
+          {
+            "key": "on_sale",
+            "show": true
           }
         ]
       },
       {
         "key": "actions",
-        "width": 46,
+        "width": 60,
         "hideLabel": true,
         "show": true
       }
@@ -215,58 +243,85 @@
       {
         "key": "price",
         "show": true,
-        "align": "right"
+        "align": "right",
+        "display": [
+          {
+            "key": "tax",
+            "show": false
+          }
+        ]
       },
       {
         "key": "regular_price",
         "show": true,
         "align": "right",
-        "disableSort": true
+        "disableSort": true,
+        "display": [
+          {
+            "key": "tax",
+            "show": false
+          }
+        ]
       },
       {
         "key": "sale_price",
         "show": true,
         "align": "right",
-        "disableSort": true
+        "disableSort": true,
+        "display": [
+          {
+            "key": "tax",
+            "show": false
+          }
+        ]
       },
       {
-        "key": "date_created",
+        "key": "date_created_gmt",
         "show": false
       },
       {
-        "key": "date_modified",
+        "key": "date_modified_gmt",
         "show": false,
         "disableSort": true
       },
       {
         "key": "actions",
         "disableSort": true,
-        "width": 38,
+        "width": 46,
         "hideLabel": true,
         "show": true
       }
     ]
   },
   "orders": {
-    "sortBy": "date_created",
+    "sortBy": "date_created_gmt",
     "sortDirection": "desc",
     "columns": [
       {
         "key": "status",
         "width": 45,
         "align": "center",
-        "hideLabel": true,
-        "show": true
+        "show": true,
+        "hideLabel": true
       },
       {
         "key": "number",
         "align": "center",
-        "hideLabel": true,
         "show": true
       },
       {
         "key": "customer_id",
-        "show": true
+        "show": true,
+        "display": [
+          {
+            "key": "billing",
+            "show": false
+          },
+          {
+            "key": "shipping",
+            "show": false
+          }
+        ]
       },
       {
         "key": "billing",
@@ -282,23 +337,42 @@
       },
       {
         "key": "customer_note",
-        "width": 38,
+        "hideLabel": true,
+        "width": 46,
         "show": true,
         "disableSort": true
       },
       {
-        "key": "date_created",
+        "key": "date_created_gmt",
         "show": true
       },
       {
-        "key": "date_modified",
+        "key": "date_modified_gmt",
         "show": false,
         "disableSort": true
       },
       {
-        "key": "date_completed",
+        "key": "date_completed_gmt",
         "show": false,
         "disableSort": true
+      },
+      {
+        "key": "date_paid_gmt",
+        "show": false,
+        "disableSort": true
+      },
+      {
+        "key": "created_via",
+        "hideLabel": true,
+        "width": 46,
+        "align": "center",
+        "disableSort": true,
+        "show": true
+      },
+      {
+        "key": "cashier",
+        "disableSort": true,
+        "show": true
       },
       {
         "key": "payment_method",
@@ -307,12 +381,25 @@
       {
         "key": "total",
         "align": "right",
-        "show": true
+        "show": true,
+        "display": [
+          {
+            "key": "payment_method",
+            "show": false
+          }
+        ]
+      },
+      {
+        "key": "receipt",
+        "disableSort": true,
+        "width": 46,
+        "hideLabel": true,
+        "show": false
       },
       {
         "key": "actions",
         "disableSort": true,
-        "width": 38,
+        "width": 46,
         "hideLabel": true,
         "show": true
       }
@@ -366,14 +453,124 @@
         "disableSort": true
       },
       {
-        "key": "date_created",
+        "key": "date_created_gmt",
         "show": true
+      },
+      {
+        "key": "date_modified_gmt",
+        "show": false
       },
       {
         "key": "actions",
         "disableSort": true,
-        "width": 38,
+        "width": 46,
         "hideLabel": true,
+        "show": true
+      }
+    ]
+  },
+  "reports-orders": {
+    "sortBy": "date_created_gmt",
+    "sortDirection": "desc",
+    "columns": [
+      {
+        "key": "select",
+        "width": 46,
+        "align": "center",
+        "show": true
+      },
+      {
+        "key": "status",
+        "width": 46,
+        "align": "center",
+        "show": true,
+        "hideLabel": true
+      },
+      {
+        "key": "number",
+        "align": "center",
+        "show": true
+      },
+      {
+        "key": "customer_id",
+        "show": false
+      },
+      {
+        "key": "date_created_gmt",
+        "show": true
+      },
+      {
+        "key": "date_modified_gmt",
+        "show": false,
+        "disableSort": true
+      },
+      {
+        "key": "date_completed_gmt",
+        "show": false,
+        "disableSort": true
+      },
+      {
+        "key": "date_paid_gmt",
+        "show": true,
+        "disableSort": true
+      },
+      {
+        "key": "created_via",
+        "hideLabel": true,
+        "width": 46,
+        "align": "center",
+        "disableSort": true,
+        "show": false
+      },
+      {
+        "key": "cashier",
+        "disableSort": true,
+        "show": false
+      },
+      {
+        "key": "payment_method",
+        "show": false
+      },
+      {
+        "key": "total",
+        "align": "right",
+        "show": true,
+        "display": [
+          {
+            "key": "payment_method",
+            "show": false
+          }
+        ]
+      }
+    ]
+  },
+  "logs": {
+    "sortBy": "timestamp",
+    "sortDirection": "desc",
+    "columns": [
+      {
+        "key": "timestamp",
+        "show": true
+      },
+      {
+        "key": "level",
+        "show": true
+      },
+      {
+        "key": "message",
+        "show": true,
+        "disableSort": true,
+        "flex": 3
+      },
+      {
+        "key": "context",
+        "show": true,
+        "disableSort": true,
+        "hideLabel": true,
+        "flex": 3
+      },
+      {
+        "key": "code",
         "show": true
       }
     ]

@@ -1,29 +1,51 @@
 import * as React from 'react';
 
-import { useTheme } from 'styled-components/native';
+import { useNavigation } from '@react-navigation/native';
+import get from 'lodash/get';
 
-import Box from '@wcpos/components/src/box';
-import ErrorBoundary from '@wcpos/components/src/error-boundary';
-import Suspense from '@wcpos/components/src/suspense';
+import { Box } from '@wcpos/components/src/box';
+import { Card, CardContent, CardHeader } from '@wcpos/components/src/card';
+import { ErrorBoundary } from '@wcpos/components/src/error-boundary';
+import { HStack } from '@wcpos/components/src/hstack';
+import { IconButton } from '@wcpos/components/src/icon-button';
+import { Suspense } from '@wcpos/components/src/suspense';
+import { Text } from '@wcpos/components/src/text';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@wcpos/components/src/tooltip';
 import { useQuery } from '@wcpos/query';
 
-import cells from './cells';
-import SearchBar from './search-bar';
+import { Actions } from './cells/actions';
+import { Address } from './cells/address';
+import { Avatar } from './cells/avatar';
+import { CustomerEmail } from './cells/email';
+import { UISettingsForm } from './ui-settings-form';
 import { useT } from '../../../contexts/translations';
-import { AddNewCustomer } from '../components/customer/add-new';
-import DataTable from '../components/data-table';
-import UiSettings from '../components/ui-settings';
-import useUI from '../contexts/ui-settings';
+import { DataTable } from '../components/data-table';
+import { Date } from '../components/date';
+import { QuerySearchInput } from '../components/query-search-input';
+import { UISettingsDialog } from '../components/ui-settings';
+import { useUISettings } from '../contexts/ui-settings';
 
 type CustomerDocument = import('@wcpos/database').CustomerDocument;
+
+const cells = {
+	avatar_url: Avatar,
+	billing: Address,
+	shipping: Address,
+	actions: Actions,
+	email: CustomerEmail,
+	date_created_gmt: Date,
+	date_modified_gmt: Date,
+};
+
+const renderCell = (props) => get(cells, props.column.id);
 
 /**
  *
  */
 const Customers = () => {
-	const { uiSettings } = useUI('customers');
-	const theme = useTheme();
+	const { uiSettings } = useUISettings('customers');
 	const t = useT();
+	const navigation = useNavigation();
 
 	/**
 	 *
@@ -32,50 +54,51 @@ const Customers = () => {
 		queryKeys: ['customers'],
 		collectionName: 'customers',
 		initialParams: {
-			sortBy: uiSettings.get('sortBy'),
-			sortDirection: uiSettings.get('sortDirection'),
+			sort: [{ [uiSettings.sortBy]: uiSettings.sortDirection }],
 		},
+		infiniteScroll: true,
 	});
 
 	/**
 	 *
 	 */
 	return (
-		<Box padding="small" style={{ height: '100%' }}>
-			<Box
-				raised
-				rounding="medium"
-				style={{ backgroundColor: 'white', flexGrow: 1, flexShrink: 1, flexBasis: '0%' }}
-			>
-				<Box
-					horizontal
-					space="small"
-					padding="small"
-					align="center"
-					style={{
-						backgroundColor: theme.colors.grey,
-						borderTopLeftRadius: theme.rounding.medium,
-						borderTopRightRadius: theme.rounding.medium,
-					}}
-				>
-					<SearchBar query={query} />
-					<AddNewCustomer />
-					<UiSettings uiSettings={uiSettings} title={t('Customer Settings', { _tags: 'core' })} />
-				</Box>
-				<Box style={{ flexGrow: 1, flexShrink: 1, flexBasis: '0%' }}>
+		<Box className="h-full p-2">
+			<Card className="flex-1">
+				<CardHeader className="p-0 bg-input">
+					<HStack className="p-2">
+						<QuerySearchInput
+							query={query}
+							placeholder={t('Search Customers', { _tags: 'core' })}
+							className="flex-1"
+						/>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<IconButton name="userPlus" onPress={() => navigation.navigate('AddCustomer')} />
+							</TooltipTrigger>
+							<TooltipContent>
+								<Text>{t('Add new customer', { _tags: 'core' })}</Text>
+							</TooltipContent>
+						</Tooltip>
+						<UISettingsDialog title={t('Customer Settings', { _tags: 'core' })}>
+							<UISettingsForm />
+						</UISettingsDialog>
+					</HStack>
+				</CardHeader>
+				<CardContent className="flex-1 p-0">
 					<ErrorBoundary>
 						<Suspense>
 							<DataTable<CustomerDocument>
+								id="customers"
 								query={query}
-								uiSettings={uiSettings}
-								cells={cells}
+								renderCell={renderCell}
 								noDataMessage={t('No customers found', { _tags: 'core' })}
 								estimatedItemSize={100}
 							/>
 						</Suspense>
 					</ErrorBoundary>
-				</Box>
-			</Box>
+				</CardContent>
+			</Card>
 		</Box>
 	);
 };

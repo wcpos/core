@@ -1,10 +1,10 @@
 import * as React from 'react';
 
 import { useObservableState } from 'observable-hooks';
-import { filter } from 'rxjs/operators';
+import { filter, tap } from 'rxjs/operators';
 
 import { storeCollections } from '@wcpos/database';
-import type { StoreDatabaseCollections } from '@wcpos/database';
+import type { StoreCollections } from '@wcpos/database';
 
 import { useAppState } from '../../../contexts/app-state';
 import { useT } from '../../../contexts/translations';
@@ -20,14 +20,30 @@ export type CollectionKey = keyof typeof storeCollections;
  *
  * This allows us to do a 'clear and sync' and update components
  * that are using the collection.
+ *
+ * @TODO - rxdb has a new RxCollection.onRemove hook that could be used to re-add the collection
  */
 export const useCollection = <K extends CollectionKey>(
 	key: K
-): { collection: StoreDatabaseCollections[K]; collectionLabel: string } => {
+): { collection: StoreCollections[K]; collectionLabel: string } => {
 	const t = useT();
 	const { storeDB } = useAppState();
+	// const collection = storeDB.collections[key];
+
+	/**
+	 * @FIXME - The way collections and queries are handled needs to be rethought,
+	 * it's not enough to just set the collection in state, we need to think about all the
+	 * subscriptions and queries that are using the collection.
+	 */
 	const collection = useObservableState(
-		storeDB.reset$.pipe(filter((collection) => collection.name === key)),
+		storeDB.reset$.pipe(
+			filter((collection) => collection.name === key)
+			// /**
+			//  * DebounceTime is a bit of a hack, we need to give useReplicationQuery
+			//  * time to re-add both collections before we try to access them
+			//  */
+			// debounceTime(100)
+		),
 		storeDB.collections[key]
 	);
 

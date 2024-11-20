@@ -1,29 +1,32 @@
 import * as React from 'react';
 
-import Icon from '@wcpos/components/src/icon';
-import Popover from '@wcpos/components/src/popover';
+import { IconButton } from '@wcpos/components/src/icon-button';
+import { Popover, PopoverContent, PopoverTrigger } from '@wcpos/components/src/popover';
 
 import VariationsPopover from './variations-popover';
 import { useAddVariation } from '../../hooks/use-add-variation';
 
-interface VariableActionsProps {
-	item: import('@wcpos/database').ProductDocument;
-}
+import type { CellContext } from '@tanstack/react-table';
+
+type ProductDocument = import('@wcpos/database').ProductDocument;
 
 /**
  *
  */
-const VariableActions = ({ item: parent }: VariableActionsProps) => {
-	const [opened, setOpened] = React.useState(false);
+export const VariableActions = ({ row }: CellContext<{ document: ProductDocument }, 'actions'>) => {
+	const parent = row.original.document;
 	const { addVariation } = useAddVariation();
+	const triggerRef = React.useRef(null);
 
-	// /**
-	//  *
-	//  */
+	/**
+	 *
+	 */
 	const addToCart = React.useCallback(
 		(variation, metaData) => {
 			addVariation(variation, parent, metaData);
-			// setOpened(false);
+			if (triggerRef.current) {
+				triggerRef.current.close();
+			}
 		},
 		[addVariation, parent]
 	);
@@ -32,20 +35,13 @@ const VariableActions = ({ item: parent }: VariableActionsProps) => {
 	 *
 	 */
 	return (
-		<Popover withinPortal opened={opened} onClose={() => setOpened(false)} placement="right">
-			<Popover.Target>
-				<Icon
-					name="circleChevronRight"
-					size="xxLarge"
-					type="success"
-					onPress={() => setOpened(true)}
-				/>
-			</Popover.Target>
-			<Popover.Content>
+		<Popover>
+			<PopoverTrigger ref={triggerRef} asChild>
+				<IconButton name="circleChevronRight" variant="success" size="4xl" />
+			</PopoverTrigger>
+			<PopoverContent side="right" className="w-auto max-w-80 p-2">
 				<VariationsPopover parent={parent} addToCart={addToCart} />
-			</Popover.Content>
+			</PopoverContent>
 		</Popover>
 	);
 };
-
-export default VariableActions;

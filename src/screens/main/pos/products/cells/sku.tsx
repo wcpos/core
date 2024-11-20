@@ -1,15 +1,19 @@
 import * as React from 'react';
 
-import { useObservableState } from 'observable-hooks';
+import { useObservableEagerState } from 'observable-hooks';
 
-import Text from '@wcpos/components/src/text';
+import { Text } from '@wcpos/components/src/text';
 
-type SKUProps = {
-	item: import('@wcpos/database').ProductDocument;
-};
+import type { CellContext } from '@tanstack/react-table';
 
-export const SKU = ({ item: product }: SKUProps) => {
-	const sku = useObservableState(product.sku$, product.sku);
+type ProductDocument = import('@wcpos/database').ProductDocument;
+
+/**
+ *
+ */
+export const SKU = ({ row }: CellContext<{ document: ProductDocument }, 'sku'>) => {
+	const product = row.original.document;
+	const sku = useObservableEagerState(product.sku$);
 
 	return <Text>{sku}</Text>;
 };

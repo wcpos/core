@@ -1,46 +1,44 @@
 import * as React from 'react';
 
-import Pill from '@wcpos/components/src/pill';
-import { useTable } from '@wcpos/components/src/table';
+import { useObservableEagerState } from 'observable-hooks';
 
-interface ProductCategoriesProps {
-	item: import('@wcpos/database').ProductDocument;
-}
+import { ButtonPill, ButtonText } from '@wcpos/components/src/button';
+import { useDataTable } from '@wcpos/components/src/data-table';
+import { HStack } from '@wcpos/components/src/hstack';
 
-const ProductCategories = ({ item: product }: ProductCategoriesProps) => {
-	const { categories } = product;
-	const { query } = useTable();
+import type { CellContext } from '@tanstack/react-table';
+
+type ProductDocument = import('@wcpos/database').ProductDocument;
+
+/**
+ *
+ */
+export const ProductCategories = ({
+	row,
+}: CellContext<{ document: ProductDocument }, 'categories'>) => {
+	const product = row.original.document;
+	const categories = useObservableEagerState(product.categories$) || [];
+	const { query } = useDataTable();
+
+	if (categories.length === 0) {
+		return null;
+	}
 
 	/**
-	 *
+	 * @NOTE - Don't use a unique key here, index is sufficient
 	 */
-	const handleSelectCategory = React.useCallback(
-		(category: any) => {
-			query.where('categories', { $elemMatch: { id: category.id } });
-		},
-		[query]
+	return (
+		<HStack className="flex-wrap gap-1 w-full">
+			{(categories || []).map((cat, index) => (
+				<ButtonPill
+					variant="ghost-primary"
+					size="xs"
+					key={index}
+					onPress={() => query.where('categories').elemMatch({ id: cat.id }).exec()}
+				>
+					{cat.name}
+				</ButtonPill>
+			))}
+		</HStack>
 	);
-
-	/**
-	 *
-	 */
-	const catArray = React.useMemo(() => {
-		if (Array.isArray(categories)) {
-			return categories.map((cat: any) => {
-				return {
-					key: cat.id,
-					label: cat.name,
-					action: () => handleSelectCategory(cat),
-				};
-			});
-		}
-		return [];
-	}, [categories, handleSelectCategory]);
-
-	/**
-	 *
-	 */
-	return <Pill.Group pills={catArray} size="small" color="secondary" />;
 };
-
-export default ProductCategories;

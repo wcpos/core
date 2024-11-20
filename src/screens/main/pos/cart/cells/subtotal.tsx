@@ -1,105 +1,53 @@
 import * as React from 'react';
 
-import find from 'lodash/find';
-import { useObservableState } from 'observable-hooks';
+import { useObservableEagerState } from 'observable-hooks';
 
-import Box from '@wcpos/components/src/box';
-import Text from '@wcpos/components/src/text';
+import { Text } from '@wcpos/components/src/text';
+import { VStack } from '@wcpos/components/src/vstack';
 
 import { useAppState } from '../../../../../contexts/app-state';
-import NumberInput from '../../../components/number-input';
-import { useTaxHelpers } from '../../../contexts/tax-helpers';
-import useCurrencyFormat from '../../../hooks/use-currency-format';
-import { useCurrentOrder } from '../../contexts/current-order';
+import { useCurrencyFormat } from '../../../hooks/use-currency-format';
 
+import type { CellContext } from '@tanstack/react-table';
+
+type LineItem = import('@wcpos/database').OrderDocument['line_items'][number];
 interface Props {
-	item: import('@wcpos/database').LineItemDocument;
+	uuid: string;
+	item: LineItem;
+	type: 'line_items';
 }
-
-const getTaxStatus = (meta_data) => {
-	if (!Array.isArray(meta_data)) return undefined;
-
-	const meta = meta_data.find((meta) => meta && meta.key === '_woocommerce_pos_tax_status');
-
-	return meta ? meta.value : undefined;
-};
 
 /**
  *
  */
-export const Subtotal = ({ item, column }: Props) => {
-	const { currentOrder } = useCurrentOrder();
-
-	const subtotal = parseFloat(item.subtotal);
+export const Subtotal = ({ row, column }: CellContext<Props, 'subtotal'>) => {
+	const item = row.original.item;
 	const { format } = useCurrencyFormat();
-	const { display } = column;
-	const taxStatus = getTaxStatus(item.meta_data) ?? 'taxable';
 	const { store } = useAppState();
-	const taxDisplayCart = useObservableState(store.tax_display_cart$, store.tax_display_cart);
-	const { calculateTaxesFromPrice } = useTaxHelpers();
-	const taxes = calculateTaxesFromPrice({
-		price: subtotal,
-		taxClass: item.tax_class,
-		taxStatus,
-		pricesIncludeTax: false,
-	});
-	const displaySubtotal = taxDisplayCart === 'incl' ? subtotal + taxes.total : subtotal;
+	const taxDisplayCart = useObservableEagerState(store.tax_display_cart$);
 
 	/**
-	 *
+	 * Get display values if cart includes tax
 	 */
-	const handleUpdate = React.useCallback(
-		(newValue) => {
-			let newSubtotal = parseFloat(newValue);
-			if (taxDisplayCart === 'incl') {
-				const taxes = calculateTaxesFromPrice({
-					price: newSubtotal,
-					taxClass: item.tax_class,
-					taxStatus,
-					pricesIncludeTax: true,
-				});
-				newSubtotal = parseFloat(newValue) - taxes.total;
-			}
-			currentOrder.incrementalModify((order) => {
-				const updatedLineItems = order.line_items.map((li) => {
-					const uuidMetaData = li.meta_data.find((meta) => meta.key === '_woocommerce_pos_uuid');
-					if (uuidMetaData && uuidMetaData.value === item.uuid) {
-						return {
-							...li,
-							subtotal: String(newSubtotal),
-						};
-					}
-					return li;
-				});
+	const displaySubtotal = React.useMemo(() => {
+		if (taxDisplayCart === 'incl') {
+			return parseFloat(item.subtotal) + parseFloat(item.subtotal_tax);
+		}
 
-				return { ...order, line_items: updatedLineItems };
-			});
-		},
-		[calculateTaxesFromPrice, currentOrder, item.tax_class, item.uuid, taxDisplayCart, taxStatus]
-	);
-
-	/**
-	 *
-	 */
-	const show = React.useCallback(
-		(key: string): boolean => {
-			const d = find(display, { key });
-			return !!(d && d.show);
-		},
-		[display]
-	);
+		return item.subtotal;
+	}, [item.subtotal, item.subtotal_tax, taxDisplayCart]);
 
 	/**
 	 *
 	 */
 	return (
-		<Box space="xSmall" align="end">
-			<NumberInput value={String(displaySubtotal)} onChange={handleUpdate} showDecimals />
-			{show('tax') && (
-				<Text type="textMuted" size="small">
-					{`${taxDisplayCart}. ${format(item.subtotal_tax) || 0} tax`}
+		<VStack space="xs" className="justify-end">
+			<Text>{format(displaySubtotal || 0)}</Text>
+			{column.columnDef.meta?.show('tax') && (
+				<Text className="text-sm text-muted-foreground">
+					{`${taxDisplayCart} ${format(item.subtotal_tax) || 0} tax`}
 				</Text>
 			)}
-		</Box>
+		</VStack>
 	);
 };
